@@ -60,7 +60,6 @@ namespace shape {
       std::string out("Fuck your: ");
       out += in;
       std::cout << "Input: " << in << " Output: " << out << std::endl;
-      //m_iWebsocketService->sendMessage(std::vector<uint8_t>((uint8_t)out.data(), out.size()));
       m_iWebsocketService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()));
     });
 
@@ -75,6 +74,8 @@ namespace shape {
       "TestWebsocketService instance deactivate" << std::endl <<
       "******************************"
     );
+
+    m_iWebsocketService->unregisterMessageHandler();
 
     //graceful thread finish
     m_runTreadFlag = false;

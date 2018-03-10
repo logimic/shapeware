@@ -49,6 +49,7 @@ void messageHandler(const std::string& msg)
 }
 */
 namespace shape {
+  const int BUFSIZE = 64 * 1024;
   class WebsocketService::Imp
   {
   public:
@@ -96,12 +97,6 @@ namespace shape {
 
     ~Imp()
     {
-      m_runThd = false;
-      if (m_thd.joinable()) {
-        std::cout << "Joining LwsServer thread ..." << std::endl;
-        m_thd.join();
-        std::cout << "LwsServer thread joined" << std::endl;
-      }
       delete[] m_buf;
     }
 
@@ -115,9 +110,45 @@ namespace shape {
       m_port = port;
     }
 
+    void activate(const shape::Properties *props)
+    {
+      TRC_FUNCTION_ENTER("");
+      TRC_INFORMATION(std::endl <<
+        "******************************" << std::endl <<
+        "WebsocketService instance activate" << std::endl <<
+        "******************************"
+      );
+
+      // server url will be http://localhost:<port> default port: 1338
+      props->getMemberAsInt("WebsocketPort", m_port);
+      run();
+
+      TRC_FUNCTION_LEAVE("")
+    }
+
+    void deactivate()
+    {
+      TRC_FUNCTION_ENTER("");
+      TRC_INFORMATION(std::endl <<
+        "******************************" << std::endl <<
+        "WebsocketService instance deactivate" << std::endl <<
+        "******************************"
+      );
+
+      m_runThd = false;
+      if (m_thd.joinable()) {
+        std::cout << "Joining LwsServer thread ..." << std::endl;
+        m_thd.join();
+        std::cout << "LwsServer thread joined" << std::endl;
+      }
+
+      TRC_FUNCTION_LEAVE("")
+    }
+
   private:
     Imp()
     {
+      m_buf = shape_new unsigned char[BUFSIZE];
     }
 
     std::mutex m_connectionMutex;
@@ -267,7 +298,7 @@ namespace shape {
         if (nullptr == m_buf || m_bufSize < MINSZ + msg.size()) {
           m_bufSize = MINSZ + msg.size();
           delete[] m_buf;
-          m_buf = new unsigned char[MINSZ + msg.size()];
+          m_buf = shape_new unsigned char[MINSZ + msg.size()];
         }
 
         std::memcpy(&m_buf[LWS_SEND_BUFFER_PRE_PADDING], msg.data(), msg.size());
@@ -316,34 +347,12 @@ namespace shape {
 
   void WebsocketService::activate(const shape::Properties *props)
   {
-    TRC_FUNCTION_ENTER("");
-    TRC_INFORMATION(std::endl <<
-      "******************************" << std::endl <<
-      "WebsocketService instance activate" << std::endl <<
-      "******************************"
-    );
-
-    int port = Imp::get().getPort();
-
-    // server url will be http://localhost:<port> default port: 1338
-    props->getMemberAsInt("WebsocketPort", port);
-    Imp::get().setPort(port);
-    Imp::get().run();
-
-    TRC_FUNCTION_LEAVE("")
+    Imp::get().activate(props);
   }
 
   void WebsocketService::deactivate()
   {
-    TRC_FUNCTION_ENTER("");
-    TRC_INFORMATION(std::endl <<
-      "******************************" << std::endl <<
-      "WebsocketService instance deactivate" << std::endl <<
-      "******************************"
-    );
-
-
-    TRC_FUNCTION_LEAVE("")
+    Imp::get().deactivate();
   }
 
   void WebsocketService::modify(const shape::Properties *props)
