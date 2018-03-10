@@ -1,4 +1,4 @@
-project(shaparts)
+project(shapeware)
 
 cmake_minimum_required(VERSION 3.0)
 
@@ -24,46 +24,13 @@ FIND_PACKAGE(shape REQUIRED)
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 include(${CMAKE_MODULE_PATH}/ShapeComponentDeclaration.cmake)
 
-#######################
-# step 0
-find_path(LIBWEBSOCKETS_INCLUDE_DIR libwebsockets.h ${CMAKE_CURRENT_SOURCE_DIR}/external/libwebsockets/build/include)
-
-if((NOT LIBWEBSOCKETS_INCLUDE_DIR) OR (NOT EXISTS ${LIBWEBSOCKETS_INCLUDE_DIR}))
-    # we couldn't find the header files for Libwebsockets or they don't exist
-    message("Unable to find Libwebsockets")
-
-    # we have a submodule setup for foo, assume it is under external/foo
-    # now we need to clone this submodule
-    #execute_process(COMMAND git submodule update --init -- external/foo
-    #                WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-    set (LWS_WITH_SSL false)
-	add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
-	
-    # set LIBWEBSOCKETS_INCLUDE_DIR
-    set(LIBWEBSOCKETS_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/libwebsockets/build/include
-        CACHE PATH "libwebsockets include directory")
-
-    # also install it
-    #install(DIRECTORY ${FOO_INCLUDE_DIR}/foo DESTINATION ${some_dest})
-
-    # for convenience setup a target
-    add_library(libwebsockets INTERFACE)
-    target_include_directories(libwebsockets INTERFACE
-                               $<BUILD_INTERFACE:${LIBWEBSOCKETS_INCLUDE_DIR}>)
-    #                           $<INSTALL_INTERFACE:${some_dest}>)
-
-    # need to export target as well
-    #install(TARGETS foo EXPORT my_export_set DESTINATION ${some_dest})
-	
-else()
-    # see above, setup target as well
-endif()
-
-#######################
 
 include_directories(${shape_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include)
+
+# external/libwebsockets
+set (LWS_WITH_SSL false)
+add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
 
 add_subdirectory(include)
 add_subdirectory(WebsocketService)

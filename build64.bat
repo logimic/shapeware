@@ -1,4 +1,4 @@
-set project=IqrfGwDaemon
+set project=shapeware
 
 rem //expected build dir structure
 set buildexp=build\\VS14_2015_x64
@@ -13,12 +13,6 @@ rem //get path to to Shape libs
 set shape=..\\shape\\%buildexp%
 pushd %shape%
 set shape=%cd%
-popd
-
-rem //get path to Libwebsockets
-set lws=..\\..\\shape3rd\\libwebsockets\\build64\\Visual_Studio_14_2015\\x64
-pushd %clibcdc%
-set clibcdc=%cd%
 popd
 
 rem //launch cmake to generate build environment
