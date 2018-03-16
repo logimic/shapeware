@@ -33,8 +33,10 @@ set(LWS_WITH_SSL false)
 add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
 
 add_subdirectory(include)
+add_subdirectory(CppRestService)
 add_subdirectory(WebsocketService)
 add_subdirectory(tests/TestWebsocketService)
+add_subdirectory(tests/TestCppRestService)
 add_subdirectory(startup)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake @ONLY)

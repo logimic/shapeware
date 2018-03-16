@@ -33,6 +33,13 @@
       "libraryPath": "../bin/Debug",
       "libraryName": "WebsocketService",
       "enabled": true,
+      "startlevel": 1
+    },
+    {
+      "name": "shape::CppRestService",
+      "libraryPath": "../bin/Debug",
+      "libraryName": "CppRestService",
+      "enabled": true,
       "startlevel": 0
     },
     {
@@ -40,7 +47,14 @@
       "libraryPath": "../bin/Debug",
       "libraryName": "TestWebsocketService",
       "enabled": true,
-      "startlevel": 0
+      "startlevel": 2
+    },
+    {
+      "name": "shape::TestCppRestService",
+      "libraryPath": "../bin/Debug",
+      "libraryName": "TestCppRestService",
+      "enabled": true,
+      "startlevel": 2
     }
   ]
 }

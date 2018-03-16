@@ -15,9 +15,11 @@ pushd %shape%
 set shape=%cd%
 popd
 
+set vcpkg=c:\\devel\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake
+
 rem //launch cmake to generate build environment
 pushd %builddir%
-cmake -G "Visual Studio 14 2015 Win64" -Dshape_DIR:PATH=%shape% %currentdir%
+cmake -G "Visual Studio 14 2015 Win64" -DCMAKE_TOOLCHAIN_FILE=%vcpkg% -Dshape_DIR:PATH=%shape% %currentdir%
 popd
 
 rem //build from generated build environment
