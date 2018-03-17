@@ -54,13 +54,9 @@ namespace shape {
 
     //invoking thread by lambda
     m_thread = std::thread([this]() { this->runTread(); });
-    m_iRestApiService->registerDataHandler([&](const std::string& data)
+    m_iRestApiService->registerDataHandler([&](int statusCode, const std::string& data)
     {
-      std::string in((char*)data.data(), data.size());
-      std::string out("Fuck your: ");
-      out += in;
-      std::cout << "Input: " << in << " Output: " << out << std::endl;
-      //m_iRestApiService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()));
+      std::cout << "Received: " << PAR(statusCode) << std::endl << data << std::endl;
     });
 
     TRC_FUNCTION_LEAVE("")
@@ -124,8 +120,8 @@ namespace shape {
       std::ostringstream os;
       os << "{\"data\": {\"counter\": " << num << "}}";
       std::string out = os.str();
-      //m_iRestApiService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()));
-      std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      m_iRestApiService->getData("https://repository.iqrfalliance.org/api/standards");
+      std::this_thread::sleep_for(std::chrono::milliseconds(10000));
     }
 
     TRC_FUNCTION_LEAVE("")

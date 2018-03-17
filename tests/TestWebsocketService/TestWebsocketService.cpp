@@ -57,7 +57,7 @@ namespace shape {
     m_iWebsocketService->registerMessageHandler([&](const std::vector<uint8_t> msg)
     {
       std::string in((char*)msg.data(), msg.size());
-      std::string out("Fuck your: ");
+      std::string out("I'v got: ");
       out += in;
       std::cout << "Input: " << in << " Output: " << out << std::endl;
       m_iWebsocketService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()));

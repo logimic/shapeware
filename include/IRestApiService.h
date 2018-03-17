@@ -15,7 +15,7 @@ namespace shape {
   class IRestApiService_DECLSPEC IRestApiService
   {
   public:
-    typedef std::function<void(const std::string & data)> DataHandlerFunc;
+    typedef std::function<void(int statusCode, const std::string & data)> DataHandlerFunc;
 
     virtual void registerDataHandler(DataHandlerFunc hndl) = 0;
     virtual void unregisterDataHandler() = 0;
