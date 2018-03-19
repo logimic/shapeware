@@ -70,8 +70,9 @@ namespace shape {
         if (response.status_code() == status_codes::OK)
         {
           auto body = response.extract_string();
-          std::wstring wstr = body.get().c_str();
-          std::string rsp = utility::conversions::to_utf8string(wstr);
+          //std::wstring wstr = body.get().c_str();
+          //std::string rsp = utility::conversions::to_utf8string(wstr);
+          std::string rsp = body.get();
           handleData((int)status_codes::OK, rsp);
         }
         else {

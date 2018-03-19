@@ -29,7 +29,6 @@ include_directories(${shape_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # external/libwebsockets
-set(LWS_WITH_SSL false)
 add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
 
 add_subdirectory(include)
