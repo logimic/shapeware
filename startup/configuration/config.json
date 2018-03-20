@@ -5,7 +5,7 @@
   "cacheDir": "cache",
   "userDir": "",
   "configurationDir": "configuration",
-  "deploymentDir": "../../../../shape/build/VS14_2015_x64/bin/Debug",
+  "deploymentDir": "../../../../shape/build/Unix_Makefiles/bin",
   "components": [
     {
       "name": "shape::TraceFormatService",
@@ -30,28 +30,28 @@
     },
     {
       "name": "shape::WebsocketService",
-      "libraryPath": "../bin/Debug",
+      "libraryPath": ".",
       "libraryName": "WebsocketService",
       "enabled": true,
       "startlevel": 1
     },
     {
       "name": "shape::CppRestService",
-      "libraryPath": "../bin/Debug",
+      "libraryPath": ".",
       "libraryName": "CppRestService",
       "enabled": true,
       "startlevel": 0
     },
     {
       "name": "shape::TestWebsocketService",
-      "libraryPath": "../bin/Debug",
+      "libraryPath": ".",
       "libraryName": "TestWebsocketService",
       "enabled": true,
       "startlevel": 2
     },
     {
       "name": "shape::TestCppRestService",
-      "libraryPath": "../bin/Debug",
+      "libraryPath": ".",
       "libraryName": "TestCppRestService",
       "enabled": true,
       "startlevel": 2

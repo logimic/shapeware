@@ -121,6 +121,7 @@ namespace shape {
 
       // server url will be http://localhost:<port> default port: 1338
       props->getMemberAsInt("WebsocketPort", m_port);
+      TRC_INFORMATION(PAR(m_port));
       run();
 
       TRC_FUNCTION_LEAVE("")
