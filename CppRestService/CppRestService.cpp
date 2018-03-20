@@ -59,10 +59,16 @@ namespace shape {
     
     void getData(const std::string & url)
     {
-      pplx::create_task([=]
+      TRC_FUNCTION_ENTER(PAR(url));
+      auto requestTask = pplx::create_task([=]
       {
         auto wurl = utility::conversions::to_string_t(url);
-        http_client client(wurl);
+
+        http_client_config config;
+        config.set_validate_certificates(false);
+        http_client client(wurl, config);
+        //http_client client(wurl);
+        //http_client client(U("https://en.wikipedia.org/wiki/HTTP_302"));
 
         return client.request(methods::GET);
       }).then([=](http_response response)
@@ -79,6 +85,19 @@ namespace shape {
           handleData((int)response.status_code(), "");
         }
       });
+
+      // Wait for all the outstanding I/O to complete and handle any exceptions
+      try
+      {
+          //requestTask.wait();
+      }
+      catch (const std::exception &e)
+      {
+          std::cerr << "Error exception: " << e.what() << std::endl;
+          CATCH_EXC_TRC_WAR(std::exception, e, "When GET: " << url)
+      }
+      TRC_FUNCTION_LEAVE("")
+
     }
 
     void registerDataHandler(DataHandlerFunc dataHandlerFunc)
