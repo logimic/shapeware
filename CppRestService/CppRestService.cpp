@@ -67,17 +67,12 @@ namespace shape {
         http_client_config config;
         config.set_validate_certificates(false);
         http_client client(wurl, config);
-        //http_client client(wurl);
-        //http_client client(U("https://en.wikipedia.org/wiki/HTTP_302"));
-
         return client.request(methods::GET);
       }).then([=](http_response response)
       {
         if (response.status_code() == status_codes::OK)
         {
-          auto body = response.extract_string();
-          //std::wstring wstr = body.get().c_str();
-          //std::string rsp = utility::conversions::to_utf8string(wstr);
+          auto body = response.extract_utf8string();
           std::string rsp = body.get();
           handleData((int)status_codes::OK, rsp);
         }

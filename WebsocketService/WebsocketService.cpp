@@ -227,6 +227,7 @@ namespace shape {
 
       if (context == NULL) {
         lwsl_err("libwebsocket init failed\n");
+        lws_context_destroy(context);
         return;
       }
 
