@@ -1,5 +1,12 @@
 project(CppRestService)
 
+# Use custom Findcpprestsdk.cmake path
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
+message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
+
+#find_package(Boost REQUIRED COMPONENTS filesystem )
+find_package(Boost REQUIRED)
 find_package(cpprestsdk REQUIRED)
 
 set(COMPONENT shape::CppRestService)
@@ -25,4 +32,8 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE cpprestsdk::cpprest)
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE cpprestsdk::cpprest)
+else()
+    target_link_libraries(${PROJECT_NAME} boost_system crypto ssl cpprest)
+endif()
