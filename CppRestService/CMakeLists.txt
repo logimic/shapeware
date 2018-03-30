@@ -1,11 +1,16 @@
 project(CppRestService)
 
+if (UNIX)
 # Use custom Findcpprestsdk.cmake path
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+  set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+  find_package(Boost REQUIRED)
+  find_package(cpprestsdk REQUIRED)
+else()
+  message(STATUS "cpprestsdk find process controlled by vcpkg on Win")
+endif()
 
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 
-#find_package(Boost REQUIRED COMPONENTS filesystem )
 find_package(Boost REQUIRED)
 find_package(cpprestsdk REQUIRED)
 
