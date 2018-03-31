@@ -84,8 +84,10 @@ namespace shape {
     void handleMsg(const std::vector<uint8_t> & msg)
     {
       if (m_messageHandlerFunc) {
-        TRC_WARNING("Message handler is not registered");
         m_messageHandlerFunc(msg);
+      }
+      else {
+        TRC_WARNING("Message handler is not registered");
       }
     }
 
