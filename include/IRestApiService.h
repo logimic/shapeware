@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <future>
 
 #ifdef IRestApiService_EXPORTS
 #define IRestApiService_DECLSPEC SHAPE_ABI_EXPORT
@@ -31,11 +32,7 @@ namespace shape {
   class IRestApiService_DECLSPEC IRestApiService
   {
   public:
-    typedef std::function<void(int statusCode, const std::string & data)> DataHandlerFunc;
-
-    virtual void registerDataHandler(DataHandlerFunc hndl) = 0;
-    virtual void unregisterDataHandler() = 0;
-    virtual void getData(const std::string & url) = 0;
+    virtual void getFile(const std::string & url, const std::string& fname) = 0;
     virtual ~IRestApiService() {};
   };
 }

@@ -28,9 +28,7 @@ namespace shape {
   public:
     CppRestService();
     virtual ~CppRestService();
-    virtual void registerDataHandler(DataHandlerFunc hndl) override;
-    virtual void unregisterDataHandler() override;
-    virtual void getData(const std::string & url) override;
+    void getFile(const std::string & url, const std::string& fname) override;
 
     void activate(const shape::Properties *props = 0);
     void deactivate();

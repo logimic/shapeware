@@ -54,10 +54,6 @@ namespace shape {
 
     //invoking thread by lambda
     m_thread = std::thread([this]() { this->runTread(); });
-    m_iRestApiService->registerDataHandler([&](int statusCode, const std::string& data)
-    {
-      std::cout << "Received: " << PAR(statusCode) << std::endl << data << std::endl;
-    });
 
     TRC_FUNCTION_LEAVE("")
   }
@@ -70,8 +66,6 @@ namespace shape {
       "TestCppRestService instance deactivate" << std::endl <<
       "******************************"
     );
-
-    m_iRestApiService->unregisterDataHandler();
 
     //graceful thread finish
     m_runTreadFlag = false;
@@ -120,7 +114,15 @@ namespace shape {
       std::ostringstream os;
       os << "{\"data\": {\"counter\": " << num << "}}";
       std::string out = os.str();
-      m_iRestApiService->getData("https://repository.iqrfalliance.org/api/standards");
+      //m_iRestApiService->getData("https://repository.iqrfalliance.org/api/standards");
+      try {
+        m_iRestApiService->getFile("https://repository.iqrfalliance.org/download/handlers/1002_0000_Light-Template.hex", "test.hex");
+        std::cout << "loaded" << std::endl;
+      }
+      catch (std::exception &e) {
+        std::cerr << e.what() << std::endl;
+      }
+
       std::this_thread::sleep_for(std::chrono::milliseconds(10000));
     }
 

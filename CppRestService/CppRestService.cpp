@@ -56,63 +56,62 @@ namespace shape {
   class CppRestService::Imp
   {
   public:
-    
-    void getData(const std::string & url)
+
+    void getFile(const std::string & url, const std::string& fname)
     {
       TRC_FUNCTION_ENTER(PAR(url));
-      auto requestTask = pplx::create_task([=]
-      {
-        auto wurl = utility::conversions::to_string_t(url);
 
-        http_client_config config;
-        config.set_validate_certificates(false);
-        http_client client(wurl, config);
-        return client.request(methods::GET);
-      }).then([=](http_response response)
-      {
-        if (response.status_code() == status_codes::OK)
+      auto wfname = utility::conversions::to_string_t(fname);
+      // Open a stream to the file to write the HTTP response body into.
+      auto fileBuffer = std::make_shared<streambuf<uint8_t>>();
+
+      { // scope of Tasks lifetime
+        auto openTask = file_buffer<uint8_t>::open(wfname, std::ios::out).then([=](streambuf<uint8_t> outFile) -> pplx::task<http_response>
         {
-          auto body = response.extract_utf8string();
-          std::string rsp = body.get();
-          handleData((int)status_codes::OK, rsp);
+          *fileBuffer = outFile;
+
+          http_client_config config;
+          config.set_validate_certificates(false);
+
+          auto wurl = utility::conversions::to_string_t(url);
+
+          // Create an HTTP request.
+          // Encode the URI query since it could contain special characters like spaces.
+          http_client client(wurl, config);
+          return client.request(methods::GET);
+        });
+
+        // Write the response body into the file buffer.
+        auto responseTask = openTask.then([=](http_response response) -> pplx::task<size_t>
+        {
+          if (response.status_code() != status_codes::OK) {
+            THROW_EXC_TRC_WAR(std::logic_error, "response status code: " << NAME_PAR(statusCode, (int)response.status_code()));
+          }
+          return response.body().read_to_end(*fileBuffer);
+        });
+
+        // Close the file buffer.
+        auto writtenTask = responseTask.then([=](size_t) {
+          fileBuffer->close();
+        });
+
+        // Wait for all the outstanding I/O to complete and handle any exceptions
+        try
+        {
+          openTask.get();
+          responseTask.get();
+          writtenTask.get();
         }
-        else {
-          handleData((int)response.status_code(), "");
+        catch (const std::exception &e)
+        {
+          CATCH_EXC_TRC_WAR(std::exception, e, "When GET: " << url);
+          THROW_EXC_TRC_WAR(std::logic_error, "Cannot download:" << PAR(url));
         }
-      });
-
-      // Wait for all the outstanding I/O to complete and handle any exceptions
-      try
-      {
-          //requestTask.wait();
       }
-      catch (const std::exception &e)
-      {
-          std::cerr << "Error exception: " << e.what() << std::endl;
-          CATCH_EXC_TRC_WAR(std::exception, e, "When GET: " << url)
-      }
-      TRC_FUNCTION_LEAVE("")
 
+      TRC_FUNCTION_LEAVE("");
     }
-
-    void registerDataHandler(DataHandlerFunc dataHandlerFunc)
-    {
-      m_dataHandlerFunc = dataHandlerFunc;
-    }
-
-    void unregisterDataHandler()
-    {
-      m_dataHandlerFunc = nullptr;
-    }
-
-    void handleData(int statusCode, const std::string & data)
-    {
-      if (m_dataHandlerFunc) {
-        TRC_WARNING("Message handler is not registered");
-        m_dataHandlerFunc(statusCode, data);
-      }
-    }
-
+    
     ~Imp()
     {
     }
@@ -147,8 +146,6 @@ namespace shape {
 
   private:
 
-    DataHandlerFunc m_dataHandlerFunc;
-
   };
 
   ///////////////////////////////////////
@@ -162,19 +159,9 @@ namespace shape {
     delete m_imp;
   }
 
-  void CppRestService::registerDataHandler(DataHandlerFunc dataHandlerFunc)
+  void CppRestService::getFile(const std::string & url, const std::string& fname)
   {
-    m_imp->registerDataHandler(dataHandlerFunc);
-  }
-
-  void CppRestService::unregisterDataHandler()
-  {
-    m_imp->unregisterDataHandler();
-  }
-
-  void CppRestService::getData(const std::string & url)
-  {
-    m_imp->getData(url);
+    return m_imp->getFile(url, fname);
   }
 
   void CppRestService::activate(const shape::Properties *props)
