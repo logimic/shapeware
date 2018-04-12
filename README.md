@@ -15,7 +15,7 @@ Install via vcpkg:
 ```
 C:\devel\vcpkg>vcpkg install cpprestsdk:x86-windows
 ...
-C:\devel\vcpkg>vcpkg install cpprestsdk:x86-windows
+C:\devel\vcpkg>vcpkg install cpprestsdk:x64-windows
 ...
 ```
 It installs all other dependecies like BOOST, SSL, ZLIB, ... After succesfull instalation you would have:
