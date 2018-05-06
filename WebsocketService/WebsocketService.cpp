@@ -195,12 +195,20 @@ namespace shape {
           0              // per_session_data_size
         },
         {
-          "iqrf", // protocol name - very important!
+          NULL, // protocol name - very important!
           callback_cobalt,   // callback
           128, /* rx buf size must be >= permessage-deflate rx size
                                * dumb-increment only sends very small packets, so we set
                                * this accordingly.  If your protocol will send bigger
                                * things, adjust this to match */
+        },
+        {
+          "iqrf", // protocol name - very important!
+          callback_cobalt,   // callback
+          128, /* rx buf size must be >= permessage-deflate rx size
+               * dumb-increment only sends very small packets, so we set
+               * this accordingly.  If your protocol will send bigger
+               * things, adjust this to match */
         },
         {
           NULL, NULL, 0,   /* End of list */
@@ -253,6 +261,8 @@ namespace shape {
       void *in,
       size_t len)
     {
+      //return 0;
+      callback_cobalt(wsi, reason, user, in, len);
       return 0;
     }
 
