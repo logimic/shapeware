@@ -211,6 +211,14 @@ namespace shape {
                * things, adjust this to match */
         },
         {
+          "cobalt", // protocol name - very important!
+          callback_cobalt,   // callback
+          128, /* rx buf size must be >= permessage-deflate rx size
+               * dumb-increment only sends very small packets, so we set
+               * this accordingly.  If your protocol will send bigger
+               * things, adjust this to match */
+        },
+        {
           NULL, NULL, 0,   /* End of list */
         }
       };
