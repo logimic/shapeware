@@ -52,13 +52,10 @@ namespace shape {
     /// The message is send outside
     virtual void sendMessage(const std::vector<uint8_t> & msg) = 0;
 
+    virtual void start() = 0;
+    virtual void stop() = 0;
+
     inline virtual ~IWebsocketService() {};
 
-    //virtual void run() = 0;
-    //virtual void send(const std::string& msg) = 0;
-    //// remote message
-    //typedef std::function<void(const std::string& msg)> MessageHandlerFunc;
-    //virtual void registerMessageHandler(MessageHandlerFunc messageHandlerFunc) = 0;
-    //virtual ~IWebsocketService() {}
   };
 }

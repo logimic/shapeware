@@ -32,6 +32,8 @@ namespace shape {
     void registerMessageHandler(MessageHandlerFunc hndl) override;
     void unregisterMessageHandler() override;
     void sendMessage(const std::vector<uint8_t> & msg) override;
+    void start() override;
+    void stop() override;
 
     void activate(const shape::Properties *props = 0);
     void deactivate();

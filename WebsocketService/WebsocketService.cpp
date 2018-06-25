@@ -59,16 +59,36 @@ namespace shape {
       return s;
     }
 
-    void run()
-    {
-      m_thd = std::thread([this]() { this->runThd(); });
-    }
-
     void sendMessage(const std::vector<uint8_t> & msg)
     {
-      std::unique_lock<std::mutex> lck(m_connectionMutex);
-      if (m_wsi)
-        m_msgQueue.push(msg);
+      if (m_runThd) {
+        std::unique_lock<std::mutex> lck(m_connectionMutex);
+        if (m_wsi)
+          m_msgQueue.push(msg);
+      }
+      else {
+        TRC_WARNING("Websocket is not started" << PAR(m_port));
+      }
+    }
+
+    void startThd()
+    {
+      if (!m_runThd) {
+        m_runThd = true;
+        m_thd = std::thread([this]() { this->runThd(); });
+      }
+    }
+
+    void stopThd()
+    {
+      if (m_runThd) {
+        m_runThd = false;
+        if (m_thd.joinable()) {
+          std::cout << "Joining LwsServer thread ..." << std::endl;
+          m_thd.join();
+          std::cout << "LwsServer thread joined" << std::endl;
+        }
+      }
     }
 
     void registerMessageHandler(MessageHandlerFunc messageHandlerFunc)
@@ -123,8 +143,12 @@ namespace shape {
 
       // server url will be http://localhost:<port> default port: 1338
       props->getMemberAsInt("WebsocketPort", m_port);
-      TRC_INFORMATION(PAR(m_port));
-      run();
+      props->getMemberAsBool("AutoStart", m_autoStart);
+      TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart));
+      
+      if (m_autoStart) {
+        startThd();
+      }
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -138,12 +162,7 @@ namespace shape {
         "******************************"
       );
 
-      m_runThd = false;
-      if (m_thd.joinable()) {
-        std::cout << "Joining LwsServer thread ..." << std::endl;
-        m_thd.join();
-        std::cout << "LwsServer thread joined" << std::endl;
-      }
+      stopThd();
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -157,7 +176,7 @@ namespace shape {
     std::mutex m_connectionMutex;
     std::queue<std::vector<uint8_t>> m_msgQueue;
 
-    bool m_runThd = true;
+    bool m_runThd = false;
     std::thread m_thd;
     unsigned char* m_buf = nullptr;
     unsigned m_bufSize = 0;
@@ -168,7 +187,7 @@ namespace shape {
 
     // default server url will be http://localhost:1338
     int m_port = 1338;
-
+    bool m_autoStart = true;
 
     void runThd()
     {
@@ -347,14 +366,19 @@ namespace shape {
   {
   }
 
-  //void WebsocketService::run()
-  //{
-  //  Imp::get().run();
-  //}
-
   void WebsocketService::sendMessage(const std::vector<uint8_t> & msg)
   {
     Imp::get().sendMessage(msg);
+  }
+
+  void WebsocketService::start()
+  {
+    Imp::get().startThd();
+  }
+
+  void WebsocketService::stop()
+  {
+    Imp::get().stopThd();
   }
 
   void WebsocketService::registerMessageHandler(MessageHandlerFunc messageHandlerFunc)
