@@ -92,7 +92,7 @@ namespace shape {
 
         // Close the file buffer.
         auto writtenTask = responseTask.then([=](size_t) {
-          fileBuffer->close();
+          return fileBuffer->close();
         });
 
         // Wait for all the outstanding I/O to complete and handle any exceptions
