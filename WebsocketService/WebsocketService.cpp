@@ -50,6 +50,9 @@ void messageHandler(const std::string& msg)
 */
 namespace shape {
   const int BUFSIZE = 64 * 1024;
+
+  struct lws_context *context = nullptr;
+
   class WebsocketService::Imp
   {
   public:
@@ -63,8 +66,10 @@ namespace shape {
     {
       if (m_runThd) {
         std::unique_lock<std::mutex> lck(m_connectionMutex);
-        if (m_wsi)
+        if (m_wsi) {
           m_msgQueue.push(msg);
+          lws_callback_on_writable(m_wsi);
+        }
       }
       else {
         TRC_WARNING("Websocket is not started" << PAR(m_port));
@@ -83,6 +88,7 @@ namespace shape {
     {
       if (m_runThd) {
         m_runThd = false;
+        lws_cancel_service(context);
         if (m_thd.joinable()) {
           std::cout << "Joining LwsServer thread ..." << std::endl;
           m_thd.join();
@@ -259,7 +265,6 @@ namespace shape {
 
       lwsl_notice("libwebsockets server\n");
 
-      struct lws_context *context = nullptr;
       context = lws_create_context(&info);
 
       if (context == NULL) {
@@ -272,7 +277,7 @@ namespace shape {
 
       while (m_runThd) {
 
-        lws_service(context, 69);
+        lws_service(context, 10000);
       }
 
       lws_context_destroy(context);
@@ -315,8 +320,9 @@ namespace shape {
         Imp::get().handleMsg(std::vector<uint8_t>((uint8_t*)in, (uint8_t*)in + len));
         break;
       case LWS_CALLBACK_SERVER_WRITEABLE:
-        Imp::get().sendMsgOnWritable();
-        lws_callback_on_writable(wsi);
+        if (Imp::get().sendMsgOnWritable()) {
+          lws_callback_on_writable(wsi);
+        }
         break;
       default:
         break;
@@ -326,7 +332,7 @@ namespace shape {
     }
 
     //get all cached msgs to send if any
-    void sendMsgOnWritable()
+    bool sendMsgOnWritable()
     {
       std::unique_lock<std::mutex> lck(m_connectionMutex);
       if (!m_msgQueue.empty()) {
@@ -352,7 +358,14 @@ namespace shape {
         }
 
         m_msgQueue.pop();
+        if (m_msgQueue.empty()) {
+          return false;
+        }
+        else {
+          return true;
+        }
       }
+      return false;
     }
 
   };
