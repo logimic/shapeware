@@ -69,7 +69,7 @@ namespace shape {
         if (m_wsi) {
           m_msgQueue.push(msg);
           lws_callback_on_writable(m_wsi);
-          lws_cancel_service(context);
+          lws_cancel_service_pt(m_wsi);
         }
       }
       else {
