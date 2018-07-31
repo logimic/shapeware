@@ -89,7 +89,7 @@ namespace shape {
     {
       if (m_runThd) {
         m_runThd = false;
-        lws_cancel_service(context);
+        if (context) lws_cancel_service(context);
         if (m_thd.joinable()) {
           std::cout << "Joining LwsServer thread ..." << std::endl;
           m_thd.join();
