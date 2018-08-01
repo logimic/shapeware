@@ -371,7 +371,7 @@ namespace shape {
               m_messageHandlerFunc(message);
             }
             else {
-              TRC_WARNING("Already unregistered message handler");
+              TRC_WARNING("Message handler not registered");
             }
           }
         }
