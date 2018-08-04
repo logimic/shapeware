@@ -431,7 +431,7 @@ namespace shape {
 
   int WebsocketService::getPort() const
   {
-    return m_imp->getPort();
+    return Imp::get().getPort();
   }
 
   void WebsocketService::registerMessageHandler(MessageHandlerFunc messageHandlerFunc)

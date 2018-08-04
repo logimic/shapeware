@@ -60,6 +60,6 @@ namespace shape {
 
   private:
     class Imp;
-    Imp* m_imp;
+    //Imp* m_imp;
   };
 }
