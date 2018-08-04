@@ -36,6 +36,13 @@
       "startlevel": 1
     },
     {
+      "name": "shape::WebsocketCppService",
+      "libraryPath": ".",
+      "libraryName": "WebsocketCppService",
+      "enabled": true,
+      "startlevel": 1
+    },
+    {
       "name": "shape::CppRestService",
       "libraryPath": ".",
       "libraryName": "CppRestService",

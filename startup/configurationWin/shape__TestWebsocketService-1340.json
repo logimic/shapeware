@@ -1,0 +1,12 @@
+{
+  "component": "shape::TestWebsocketService",
+  "instance": "TestWebsocketService-1340",
+  "RequiredInterfaces": [
+    {
+      "name": "shape::IWebsocketService",
+      "target": {
+        "WebsocketPort": 1340
+      }
+    }
+  ]
+}

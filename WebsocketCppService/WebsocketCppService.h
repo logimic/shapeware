@@ -23,27 +23,22 @@
 #include <functional>
 
 namespace shape {
-  class WebsocketService : public IWebsocketService
+  class WebsocketCppService : public IWebsocketService
   {
   public:
-    WebsocketService();
-    virtual ~WebsocketService();
+    WebsocketCppService();
+    virtual ~WebsocketCppService();
 
     void registerMessageHandler(MessageHandlerFunc hndl) override;
     void registerMessageStrHandler(MessageStrHandlerFunc hndl) override;
-    void registerOpenHandler(OpenHandlerFunc hndl) override
-    {}
-    void registerCloseHandler(CloseHandlerFunc hndl) override
-    {}
-
+    void registerOpenHandler(OpenHandlerFunc hndl) override;
+    void registerCloseHandler(CloseHandlerFunc hndl) override;
     void unregisterMessageHandler() override;
     void unregisterMessageStrHandler() override;
-    void unregisterOpenHandler() override
-    {}
-    void unregisterCloseHandler() override
-    {}
+    void unregisterOpenHandler() override;
+    void unregisterCloseHandler() override;
 
-    void sendMessage(const std::vector<uint8_t> & msg, const std::string& connId ) override;
+    void sendMessage(const std::vector<uint8_t> & msg, const std::string& connId) override;
     void sendMessage(const std::string& msg, const std::string& connId)  override;
 
     void start() override;

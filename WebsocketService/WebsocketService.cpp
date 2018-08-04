@@ -39,7 +39,7 @@ TRC_INIT_MODULE(shape::WebsocketService);
 #define LWS_LIBRARY_VERSION_NUMBER (LWS_LIBRARY_VERSION_MAJOR*1000000)+(LWS_LIBRARY_VERSION_MINOR*1000)+LWS_LIBRARY_VERSION_PATCH
 
 /*
-//starting websocket server
+//starting websocket WsServer
 //message handler processing remote control messages
 lws.registerMessageHandler([&](const std::string msg) { messageHandler(msg); });
 lws.run();
@@ -62,12 +62,27 @@ namespace shape {
       return s;
     }
 
-    void sendMessage(const std::vector<uint8_t> & msg)
+    void sendMessage(const std::vector<uint8_t> & msg, const std::string& connId) //connId ignored as only on conn supported now
     {
       if (m_runThd) {
         std::unique_lock<std::mutex> lck(m_connectionMutex);
         if (m_wsi) {
           m_msgQueue.push(msg);
+          lws_callback_on_writable(m_wsi);
+          lws_cancel_service_pt(m_wsi);
+        }
+      }
+      else {
+        TRC_WARNING("Websocket is not started" << PAR(m_port));
+      }
+    }
+
+    void sendMessage(const std::string & msg, const std::string& connId) //connId ignored as only on conn supported now
+    {
+      if (m_runThd) {
+        std::unique_lock<std::mutex> lck(m_connectionMutex);
+        if (m_wsi) {
+          m_msgQueue.push(std::vector<uint8_t>((uint8_t*)msg.data(), (uint8_t*)msg.data() + msg.size()));
           lws_callback_on_writable(m_wsi);
           lws_cancel_service_pt(m_wsi);
         }
@@ -103,15 +118,28 @@ namespace shape {
       m_messageHandlerFunc = messageHandlerFunc;
     }
 
+    void registerMessageStrHandler(MessageStrHandlerFunc messageHandlerFunc)
+    {
+      m_messageStrHandlerFunc = messageHandlerFunc;
+    }
+
     void unregisterMessageHandler()
     {
       m_messageHandlerFunc = nullptr;
     }
 
+    void unregisterMessageStrHandler()
+    {
+      m_messageStrHandlerFunc = nullptr;
+    }
+
     void handleMsg(const std::vector<uint8_t> & msg)
     {
       if (m_messageHandlerFunc) {
-        m_messageHandlerFunc(msg);
+        m_messageHandlerFunc(msg, "default");
+      }
+      if (m_messageStrHandlerFunc) {
+        m_messageStrHandlerFunc(std::string((char*)msg.data(), msg.size()), "default");
       }
       else {
         TRC_WARNING("Message handler is not registered");
@@ -148,7 +176,7 @@ namespace shape {
         "******************************"
       );
 
-      // server url will be http://localhost:<port> default port: 1338
+      // WsServer url will be http://localhost:<port> default port: 1338
       props->getMemberAsInt("WebsocketPort", m_port);
       props->getMemberAsBool("AutoStart", m_autoStart);
       TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart));
@@ -189,10 +217,11 @@ namespace shape {
     unsigned m_bufSize = 0;
 
     MessageHandlerFunc m_messageHandlerFunc;
+    MessageStrHandlerFunc m_messageStrHandlerFunc;
 
     lws * m_wsi = nullptr;
 
-    // default server url will be http://localhost:1338
+    // default WsServer url will be http://localhost:1338
     int m_port = 1338;
     bool m_autoStart = true;
 
@@ -264,7 +293,7 @@ namespace shape {
       /* tell the library what debug level to emit and to send it to syslog */
       lws_set_log_level(LLL_INFO, lwsl_emit_syslog);
 
-      lwsl_notice("libwebsockets server\n");
+      lwsl_notice("libwebsockets WsServer\n");
 
       context = lws_create_context(&info);
 
@@ -274,7 +303,7 @@ namespace shape {
         return;
       }
 
-      std::cout << "starting server..." << std::endl;
+      std::cout << "starting WsServer..." << std::endl;
 
       while (m_runThd) {
 
@@ -380,9 +409,14 @@ namespace shape {
   {
   }
 
-  void WebsocketService::sendMessage(const std::vector<uint8_t> & msg)
+  void WebsocketService::sendMessage(const std::vector<uint8_t> & msg, const std::string& connId)
   {
-    Imp::get().sendMessage(msg);
+    Imp::get().sendMessage(msg, connId);
+  }
+
+  void WebsocketService::sendMessage(const std::string & msg, const std::string& connId)
+  {
+    Imp::get().sendMessage(msg, connId);
   }
 
   void WebsocketService::start()
@@ -395,14 +429,29 @@ namespace shape {
     Imp::get().stopThd();
   }
 
+  int WebsocketService::getPort() const
+  {
+    return m_imp->getPort();
+  }
+
   void WebsocketService::registerMessageHandler(MessageHandlerFunc messageHandlerFunc)
   {
     Imp::get().registerMessageHandler(messageHandlerFunc);
   }
 
+  void WebsocketService::registerMessageStrHandler(MessageStrHandlerFunc messageHandlerFunc)
+  {
+    Imp::get().registerMessageStrHandler(messageHandlerFunc);
+  }
+
   void WebsocketService::unregisterMessageHandler()
   {
     Imp::get().unregisterMessageHandler();
+  }
+
+  void WebsocketService::unregisterMessageStrHandler()
+  {
+    Imp::get().unregisterMessageStrHandler();
   }
 
   void WebsocketService::activate(const shape::Properties *props)
