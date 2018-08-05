@@ -16,7 +16,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 include_directories (${CMAKE_SOURCE_DIR}/external/websocketpp)
-include_directories (${CMAKE_SOURCE_DIR}/external/asio-1.12.1/include)
+include_directories (${CMAKE_SOURCE_DIR}/external/asio/asio/include)
 
 if(SHAPE_STATIC_LIBS)
     add_library(${PROJECT_NAME} STATIC ${_HDRFILES} ${_SRCFILES})
