@@ -236,7 +236,7 @@ namespace shape {
         std::unique_lock<std::mutex> lock(m_mux);
 
         for (auto it : m_connectionsStrMap) {
-          if (it.second == connId) {
+          if (connId.empty() || it.second == connId) { //broadcast if empty
 
             websocketpp::lib::error_code ec;
             m_server.send(it.first, std::string((char*)msg.data(), msg.size()), websocketpp::frame::opcode::text, ec); // send text message.
