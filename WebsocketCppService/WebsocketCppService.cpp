@@ -42,6 +42,21 @@ namespace shape {
   typedef websocketpp::connection_hdl connection_hdl;
   typedef websocketpp::server<websocketpp::config::asio> WsServer;
 
+  class LogStream : public std::streambuf {
+  private:
+    std::string buffer;
+
+  protected:
+    int overflow(int ch) override {
+      buffer.push_back((char)ch);
+      if (ch == '\n') {
+        TRC_INFORMATION("Websocketpp: " << buffer);
+        buffer.clear();
+      }
+      return ch;
+    }
+  };
+
   class WebsocketCppService::Imp
   {
   private:
@@ -59,6 +74,9 @@ namespace shape {
     MessageStrHandlerFunc m_messageStrHandlerFunc;
     OpenHandlerFunc m_openHandlerFunc;
     CloseHandlerFunc m_closeHandlerFunc;
+
+    LogStream m_wsLoger;
+    std::ostream m_wsLogerOs;
 
     // lock mux before
     bool getHndl(const std::string& connId, connection_hdl& hdl)
@@ -221,6 +239,7 @@ namespace shape {
 
   public:
     Imp()
+      :m_wsLogerOs(&m_wsLoger)
     {
     }
 
@@ -393,9 +412,8 @@ namespace shape {
       m_server.set_access_channels(websocketpp::log::alevel::app);
 
       // Set custom logger (ostream-based).
-      //TODO set custom logger
-      //m_server.get_alog().set_ostream(&os);
-      //m_server.get_elog().set_ostream(&os);
+      m_server.get_alog().set_ostream(&m_wsLogerOs);
+      m_server.get_elog().set_ostream(&m_wsLogerOs);
 
       // Initialize Asio
       m_server.init_asio();
