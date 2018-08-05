@@ -33,7 +33,7 @@
 
 #include <cpprest/http_client.h>
 #include <cpprest/filestream.h>
-#include <cpprest/http_listener.h>              // HTTP server
+#include <cpprest/http_listener.h>              // HTTP WsServer
 #include <cpprest/json.h>                       // JSON library
 #include <cpprest/uri.h>                        // URI library
 #include <cpprest/ws_client.h>                  // WebSocket client

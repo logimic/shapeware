@@ -19,6 +19,7 @@
 #include "ShapeProperties.h"
 #include <string>
 #include <thread>
+#include <set>
 
 namespace shape {
   class ITraceService;
@@ -45,5 +46,7 @@ namespace shape {
     void runTread();
     std::thread m_thread;
     IWebsocketService* m_iWebsocketService = nullptr;
+    std::set<std::string> m_connections;
+
   };
 }

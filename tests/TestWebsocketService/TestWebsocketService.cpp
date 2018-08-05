@@ -20,6 +20,7 @@
 #include "Trace.h"
 #include <chrono>
 #include <iostream>
+#include <set>
 
 #include "shape__TestWebsocketService.hxx"
 
@@ -52,16 +53,38 @@ namespace shape {
       "******************************"
     );
 
-    //invoking thread by lambda
-    m_thread = std::thread([this]() { this->runTread(); });
-    m_iWebsocketService->registerMessageHandler([&](const std::vector<uint8_t> msg)
+    m_iWebsocketService->registerMessageHandler([&](const std::vector<uint8_t> msg, const std::string& connId)
     {
       std::string in((char*)msg.data(), msg.size());
-      std::string out("I'v got: ");
-      out += in;
+      int port = m_iWebsocketService->getPort();
+      std::ostringstream o;
+      o << "I'v got from you: " << PAR(port) << PAR(connId) << " " << in;
+      std::string out = o.str();
       std::cout << "Input: " << in << " Output: " << out << std::endl;
-      m_iWebsocketService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()));
+      m_iWebsocketService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()), connId);
     });
+
+    m_iWebsocketService->registerOpenHandler([&](const std::string& connId)
+    {
+      m_connections.insert(connId);
+      int port = m_iWebsocketService->getPort();
+      std::ostringstream o;
+      o << "Connected: " << PAR(port) << PAR(connId);
+      std::cout << o.str() << std::endl;
+      std::string out = o.str();
+      m_iWebsocketService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()), connId);
+    });
+
+    m_iWebsocketService->registerCloseHandler([&](const std::string& connId)
+    {
+      m_connections.insert(connId);
+      int port = m_iWebsocketService->getPort();
+      std::ostringstream o;
+      o << "Disconnected: " << PAR(port) << PAR(connId);
+      std::cout << o.str() << std::endl;
+    });
+
+    m_thread = std::thread([this]() { this->runTread(); });
 
     TRC_FUNCTION_LEAVE("")
   }
@@ -76,6 +99,8 @@ namespace shape {
     );
 
     m_iWebsocketService->unregisterMessageHandler();
+    m_iWebsocketService->unregisterOpenHandler();
+    m_iWebsocketService->unregisterCloseHandler();
 
     //graceful thread finish
     m_runTreadFlag = false;
@@ -120,11 +145,15 @@ namespace shape {
     static int num = 0;
 
     while (m_runTreadFlag) {
-      std::cout << std::endl << num++;
-      std::ostringstream os;
-      os << "{\"data\": {\"counter\": " << num << "}}";
-      std::string out = os.str();
-      m_iWebsocketService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()));
+      num++;
+      //std::cout << std::endl << num;
+      for (const auto& connId : m_connections) {
+        std::ostringstream os;
+        int port = m_iWebsocketService->getPort();
+        os << "data:" << PAR(port) << PAR(connId);
+        std::string out = os.str();
+        //m_iWebsocketService->sendMessage(std::vector<uint8_t>((uint8_t*)out.data(), (uint8_t*)out.data() + out.size()), connId);
+      }
       std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     }
 
