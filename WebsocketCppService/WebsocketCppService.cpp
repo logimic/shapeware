@@ -249,28 +249,7 @@ namespace shape {
 
     void sendMessage(const std::vector<uint8_t> & msg, const std::string& connId)
     {
-      TRC_FUNCTION_ENTER(PAR(connId));
-      if (m_runThd) {
-
-        std::unique_lock<std::mutex> lock(m_mux);
-
-        for (auto it : m_connectionsStrMap) {
-          if (connId.empty() || it.second == connId) { //broadcast if empty
-
-            websocketpp::lib::error_code ec;
-            m_server.send(it.first, std::string((char*)msg.data(), msg.size()), websocketpp::frame::opcode::text, ec); // send text message.
-            if (ec) {
-              TRC_WARNING("Cannot send messgae: " << PAR(m_port) << ec.message());
-              return;
-            }
-            break;
-          }
-        }
-      }
-      else {
-        TRC_WARNING("Websocket is not started" << PAR(m_port));
-      }
-      TRC_FUNCTION_LEAVE("");
+      sendMessage(std::string((char*)msg.data(), msg.size()), connId);
     }
 
     void sendMessage(const std::string & msg, const std::string& connId)
@@ -281,7 +260,7 @@ namespace shape {
         std::unique_lock<std::mutex> lock(m_mux);
 
         for (auto it : m_connectionsStrMap) {
-          if (it.second == connId) {
+          if (connId.empty() || it.second == connId) { //broadcast if empty
 
             websocketpp::lib::error_code ec;
             m_server.send(it.first, msg, websocketpp::frame::opcode::text, ec); // send text message.
