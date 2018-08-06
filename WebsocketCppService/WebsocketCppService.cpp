@@ -281,6 +281,22 @@ namespace shape {
     void start()
     {
       TRC_FUNCTION_ENTER("");
+
+      // listen on specified port
+      try {
+        m_server.listen(m_port);
+      }
+      catch (websocketpp::exception const &e) {
+        // Websocket exception on listen. Get char string via e.what().
+      }
+
+      // Starting Websocket accept.
+      websocketpp::lib::error_code ec;
+      m_server.start_accept(ec);
+      if (ec) {
+        // Can log an error message with the contents of ec.message() here.
+      }
+
       if (!m_runThd) {
         m_runThd = true;
         m_thd = std::thread([this]() { this->runThd(); });
@@ -412,21 +428,6 @@ namespace shape {
       m_server.set_message_handler([&](connection_hdl hdl, WsServer::message_ptr msg) {
         on_message(hdl, msg);
       });
-
-      // listen on specified port
-      try {
-        m_server.listen(m_port);
-      }
-      catch (websocketpp::exception const &e) {
-        // Websocket exception on listen. Get char string via e.what().
-      }
-
-      // Starting Websocket accept.
-      websocketpp::lib::error_code ec;
-      m_server.start_accept(ec);
-      if (ec) {
-        // Can log an error message with the contents of ec.message() here.
-      }
 
       if (m_autoStart) {
         start();
