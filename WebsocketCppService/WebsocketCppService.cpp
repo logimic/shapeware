@@ -254,7 +254,7 @@ namespace shape {
 
     void sendMessage(const std::string & msg, const std::string& connId)
     {
-      TRC_FUNCTION_ENTER(PAR(connId));
+      //TRC_FUNCTION_ENTER(PAR(connId));
       if (m_runThd) {
 
         std::unique_lock<std::mutex> lock(m_mux);
@@ -275,7 +275,7 @@ namespace shape {
       else {
         TRC_WARNING("Websocket is not started" << PAR(m_port));
       }
-      TRC_FUNCTION_LEAVE("");
+      //TRC_FUNCTION_LEAVE("");
     }
 
     void start()
