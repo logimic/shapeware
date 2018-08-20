@@ -7,6 +7,12 @@
       "target": {
         "WebsocketPort": 1339
       }
+    },
+    {
+      "name": "shape::IWebsocketClientService",
+      "target": {
+        "instance": "WebsocketCppClientService-1"
+      }
     }
   ]
 }

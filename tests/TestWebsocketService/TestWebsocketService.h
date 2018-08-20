@@ -17,13 +17,18 @@
 #pragma once
 
 #include "ShapeProperties.h"
+
+#include "gtest/gtest.h"
+
 #include <string>
 #include <thread>
 #include <set>
+#include <memory>
 
 namespace shape {
   class ITraceService;
   class IWebsocketService;
+  class IWebsocketClientService;
 
   class TestWebsocketService
   {
@@ -35,18 +40,17 @@ namespace shape {
     void deactivate();
     void modify(const Properties *props);
 
+    void attachInterface(IWebsocketClientService* iface);
+    void detachInterface(IWebsocketClientService* iface);
+
     void attachInterface(IWebsocketService* iface);
     void detachInterface(IWebsocketService* iface);
 
     void attachInterface(ITraceService* iface);
     void detachInterface(ITraceService* iface);
 
+    class Imp;
   private:
-    bool m_runTreadFlag = true;
-    void runTread();
-    std::thread m_thread;
-    IWebsocketService* m_iWebsocketService = nullptr;
-    std::set<std::string> m_connections;
-
+    Imp *m_imp = nullptr;
   };
 }

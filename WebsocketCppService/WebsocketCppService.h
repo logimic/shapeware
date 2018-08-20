@@ -43,6 +43,7 @@ namespace shape {
 
     void start() override;
     void stop() override;
+    bool isStarted() const override;
 
     int getPort() const override;
 

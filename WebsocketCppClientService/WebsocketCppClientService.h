@@ -16,41 +16,34 @@
 
 #pragma once
 
-#include "IWebsocketService.h"
+#include "IWebsocketClientService.h"
 #include "ShapeProperties.h"
 #include "ITraceService.h"
 #include <string>
 #include <functional>
 
 namespace shape {
-  class WebsocketService : public IWebsocketService
+  class WebsocketCppClientService : public IWebsocketClientService
   {
   public:
-    WebsocketService();
-    virtual ~WebsocketService();
+    WebsocketCppClientService();
+    virtual ~WebsocketCppClientService();
 
     void registerMessageHandler(MessageHandlerFunc hndl) override;
     void registerMessageStrHandler(MessageStrHandlerFunc hndl) override;
-    void registerOpenHandler(OpenHandlerFunc hndl) override
-    {}
-    void registerCloseHandler(CloseHandlerFunc hndl) override
-    {}
-
+    void registerOpenHandler(OpenHandlerFunc hndl) override;
+    void registerCloseHandler(CloseHandlerFunc hndl) override;
     void unregisterMessageHandler() override;
     void unregisterMessageStrHandler() override;
-    void unregisterOpenHandler() override
-    {}
-    void unregisterCloseHandler() override
-    {}
+    void unregisterOpenHandler() override;
+    void unregisterCloseHandler() override;
 
-    void sendMessage(const std::vector<uint8_t> & msg, const std::string& connId ) override;
-    void sendMessage(const std::string& msg, const std::string& connId)  override;
+    void sendMessage(const std::vector<uint8_t> & msg) override;
+    void sendMessage(const std::string& msg)  override;
 
-    void start() override;
-    void stop() override;
-    bool isStarted() const override { return true; }
-
-    int getPort() const override;
+    void connect(const std::string& uri) override;
+    void close() override;
+    bool isConnected() const override;
 
     void activate(const shape::Properties *props = 0);
     void deactivate();
@@ -61,6 +54,6 @@ namespace shape {
 
   private:
     class Imp;
-    //Imp* m_imp;
+    Imp* m_imp;
   };
 }

@@ -25,14 +25,21 @@
       "name": "shape::LauncherService",
       "libraryPath": "",
       "libraryName": "",
-      "enabled": false,
+      "enabled": true,
       "startlevel": -2
+    },
+    {
+      "name": "shape::GTestRunner",
+      "libraryPath": "",
+      "libraryName": "GTestRunner",
+      "enabled": true,
+      "startlevel": 99
     },
     {
       "name": "shape::WebsocketService",
       "libraryPath": ".",
       "libraryName": "WebsocketService",
-      "enabled": true,
+      "enabled": false,
       "startlevel": 1
     },
     {
@@ -43,10 +50,17 @@
       "startlevel": 1
     },
     {
+      "name": "shape::WebsocketCppClientService",
+      "libraryPath": ".",
+      "libraryName": "WebsocketCppClientService",
+      "enabled": true,
+      "startlevel": 1
+    },
+    {
       "name": "shape::CppRestService",
       "libraryPath": ".",
       "libraryName": "CppRestService",
-      "enabled": true,
+      "enabled": false,
       "startlevel": 0
     },
     {
@@ -60,7 +74,7 @@
       "name": "shape::TestCppRestService",
       "libraryPath": ".",
       "libraryName": "TestCppRestService",
-      "enabled": true,
+      "enabled": false,
       "startlevel": 2
     }
   ]

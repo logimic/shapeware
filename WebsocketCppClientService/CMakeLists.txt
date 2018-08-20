@@ -1,11 +1,8 @@
-project(TestWebsocketService)
+project(WebsocketCppClientService)
 
-find_package(GoogleTest REQUIRED)
-
-set(COMPONENT shape::TestWebsocketService)
+set(COMPONENT shape::WebsocketCppClientService)
 DeclareShapeComponent(${COMPONENT})
-AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketClientService MANDATORY SINGLE)
-AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketService MANDATORY SINGLE)
+AddShapeProvidedInterface(${COMPONENT} shape::IWebsocketClientService)
 AddShapeRequiredInterface(${COMPONENT} shape::ITraceService MANDATORY MULTIPLE)
 ConfigureShapeComponent(${COMPONENT} COMPONENT_HXX)
 
@@ -17,9 +14,9 @@ source_group("Source Files" FILES ${_SRCFILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${GoogleTest_INCLUDE_DIR})
 
-add_definitions(-DGTEST_LINKED_AS_SHARED_LIBRARY=1)
+include_directories (${CMAKE_SOURCE_DIR}/external/websocketpp)
+include_directories (${CMAKE_SOURCE_DIR}/external/asio/asio/include)
 
 if(SHAPE_STATIC_LIBS)
     add_library(${PROJECT_NAME} STATIC ${_HDRFILES} ${_SRCFILES})
@@ -27,4 +24,4 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-target_link_libraries(${PROJECT_NAME} ${GoogleTest_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${LIBWEBSOCKETS_LIBRARIES_STATIC})

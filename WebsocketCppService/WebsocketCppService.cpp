@@ -250,25 +250,35 @@ namespace shape {
     void sendMessage(const std::vector<uint8_t> & msg, const std::string& connId)
     {
       sendMessage(std::string((char*)msg.data(), msg.size()), connId);
+      std::string msgStr((char*)msg.data(), msg.size());
+      sendMessage(msgStr, connId);
+      TRC_FUNCTION_LEAVE("");
     }
 
     void sendMessage(const std::string & msg, const std::string& connId)
     {
-      //TRC_FUNCTION_ENTER(PAR(connId));
-      if (m_runThd) {
-
-        std::unique_lock<std::mutex> lock(m_mux);
-
-        for (auto it : m_connectionsStrMap) {
-          if (connId.empty() || it.second == connId) { //broadcast if empty
+      TRC_FUNCTION_ENTER(PAR(connId));
+        if (connId.empty()) { //broadcast if empty
+          for (auto it : m_connectionsStrMap) {
 
             websocketpp::lib::error_code ec;
             m_server.send(it.first, msg, websocketpp::frame::opcode::text, ec); // send text message.
             if (ec) {
-              TRC_WARNING("Cannot send messgae: " << PAR(m_port) << ec.message());
-              return;
+              TRC_WARNING("Cannot send message: " << PAR(m_port) << ec.message());
             }
-            break;
+          }
+        }
+        else {
+          for (auto it : m_connectionsStrMap) {
+            if (it.second == connId) {
+
+              websocketpp::lib::error_code ec;
+              m_server.send(it.first, msg, websocketpp::frame::opcode::text, ec); // send text message.
+              if (ec) {
+                TRC_WARNING("Cannot send message: " << PAR(m_port) << ec.message());
+              }
+              break;
+            }
           }
         }
       }
@@ -342,6 +352,11 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
+    bool isStarted() const
+    {
+      return m_runThd;
+    }
+
     void registerMessageHandler(MessageHandlerFunc hndl)
     {
       m_messageHandlerFunc = hndl;
@@ -372,12 +387,12 @@ namespace shape {
       m_messageStrHandlerFunc = nullptr;
     }
 
-    void unregisterOpenHandler(OpenHandlerFunc hndl)
+    void unregisterOpenHandler()
     {
       m_openHandlerFunc = nullptr;
     }
 
-    void unregisterCloseHandler(CloseHandlerFunc hndl)
+    void unregisterCloseHandler()
     {
       m_closeHandlerFunc = nullptr;
     }
@@ -500,6 +515,11 @@ namespace shape {
     m_imp->stop();
   }
 
+  bool WebsocketCppService::isStarted() const
+  {
+    return m_imp->isStarted();
+  }
+
   int WebsocketCppService::getPort() const
   {
     return m_imp->getPort();
@@ -537,12 +557,12 @@ namespace shape {
 
   void WebsocketCppService::unregisterOpenHandler()
   {
-    m_imp->unregisterMessageHandler();
+    m_imp->unregisterOpenHandler();
   }
 
   void WebsocketCppService::unregisterCloseHandler()
   {
-    m_imp->unregisterMessageHandler();
+    m_imp->unregisterCloseHandler();
   }
 
   void WebsocketCppService::activate(const shape::Properties *props)

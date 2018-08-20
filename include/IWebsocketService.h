@@ -64,6 +64,7 @@ namespace shape {
 
     virtual void start() = 0;
     virtual void stop() = 0;
+    virtual bool isStarted() const = 0;
 
     virtual int getPort() const = 0;
 

@@ -21,18 +21,21 @@
 #include <string>
 #include <functional>
 
-#ifdef IWebsocketService_EXPORTS
-#define IWebsocket_DECLSPEC SHAPE_ABI_EXPORT
+#ifdef IWebsocketClientService_EXPORTS
+#define IWebsocketClientService_DECLSPEC SHAPE_ABI_EXPORT
 #else
-#define IWebsocket_DECLSPEC SHAPE_ABI_IMPORT
+#define IWebsocketClientService_DECLSPEC SHAPE_ABI_IMPORT
 #endif
 
 namespace shape {
-  class IWebsocket_DECLSPEC IWebsocketService
+  class IWebsocketClientService_DECLSPEC IWebsocketClientService
   {
   public:
     /// Incoming message handler functional type
-    typedef std::function<void(const std::vector<uint8_t> &, const std::string& connId)> MessageHandlerFunc;
+    typedef std::function<void(const std::vector<uint8_t>&)> MessageHandlerFunc;
+    typedef std::function<void(const std::string&)> MessageStrHandlerFunc;
+    typedef std::function<void()> OpenHandlerFunc;
+    typedef std::function<void()> CloseHandlerFunc;
 
     /// \brief Register message handler
     /// \param [in] hndl registering handler function
@@ -40,22 +43,30 @@ namespace shape {
     /// Whenever a message is received it is passed to the handler function. It is possible to register 
     /// just one handler
     virtual void registerMessageHandler(MessageHandlerFunc hndl) = 0;
+    virtual void registerMessageStrHandler(MessageStrHandlerFunc hndl) = 0;
+    virtual void registerOpenHandler(OpenHandlerFunc hndl) = 0;
+    virtual void registerCloseHandler(CloseHandlerFunc hndl) = 0;
 
     /// \brief Unregister message handler
     /// \details
     /// If the handler is not required anymore, it is possible to unregister via this method.
     virtual void unregisterMessageHandler() = 0;
+    virtual void unregisterMessageStrHandler() = 0;
+    virtual void unregisterOpenHandler() = 0;
+    virtual void unregisterCloseHandler() = 0;
 
     /// \brief send message
     /// \param [in] msg message to be sent 
     /// \details
     /// The message is send outside
-    virtual void sendMessage(const std::vector<uint8_t> & msg, const std::string& connId) = 0;
+    virtual void sendMessage(const std::vector<uint8_t> & msg) = 0;
+    virtual void sendMessage(const std::string& msg) = 0;
 
-    virtual void start() = 0;
-    virtual void stop() = 0;
+    virtual void connect(const std::string& uri) = 0;
+    virtual void close() = 0;
+    virtual bool isConnected() const = 0;
 
-    inline virtual ~IWebsocketService() {};
+    inline virtual ~IWebsocketClientService() {};
 
   };
 }
