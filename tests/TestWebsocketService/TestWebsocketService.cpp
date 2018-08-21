@@ -22,6 +22,7 @@
 #include <chrono>
 #include <iostream>
 #include <vector>
+#include <condition_variable>
 
 #include "shape__TestWebsocketService.hxx"
 
