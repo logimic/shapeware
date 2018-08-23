@@ -26,6 +26,7 @@
 #include <memory>
 
 namespace shape {
+  class ILaunchService;
   class ITraceService;
   class IWebsocketService;
   class IWebsocketClientService;
@@ -45,6 +46,9 @@ namespace shape {
 
     void attachInterface(IWebsocketService* iface);
     void detachInterface(IWebsocketService* iface);
+
+    void attachInterface(ILaunchService* iface);
+    void detachInterface(ILaunchService* iface);
 
     void attachInterface(ITraceService* iface);
     void detachInterface(ITraceService* iface);

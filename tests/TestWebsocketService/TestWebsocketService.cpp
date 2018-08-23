@@ -17,6 +17,7 @@
 #include "TestWebsocketService.h"
 #include "IWebsocketService.h"
 #include "IWebsocketClientService.h"
+#include "ILaunchService.h"
 
 #include "Trace.h"
 #include <chrono>
@@ -95,6 +96,8 @@ namespace shape {
     {}
 
   public:
+    ILaunchService* m_iLaunchService = nullptr;
+
     std::string m_instanceName;
     std::map<IWebsocketClientService*, std::shared_ptr<EventHandler>> m_iWebsocketClientServices;
     std::set<IWebsocketService*> m_iWebsocketServices;
@@ -236,6 +239,18 @@ namespace shape {
       m_iWebsocketServices.erase(iface);
     }
 
+    void attachInterface(ILaunchService* iface)
+    {
+      m_iLaunchService = iface;
+    }
+
+    void detachInterface(ILaunchService* iface)
+    {
+      if (m_iLaunchService == iface) {
+        m_iLaunchService = nullptr;
+      }
+    }
+
     void runTread()
     {
       TRC_FUNCTION_ENTER("");
@@ -248,7 +263,7 @@ namespace shape {
       int retval = RUN_ALL_TESTS();
       std::cout << std::endl << "RUN_ALL_TESTS" << PAR(retval) << std::endl;
 
-      //m_iLaunchService->exit(retval);
+      m_iLaunchService->exit(retval);
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -295,6 +310,16 @@ namespace shape {
   }
 
   void TestWebsocketService::detachInterface(IWebsocketService* iface)
+  {
+    Imp::get().detachInterface(iface);
+  }
+
+  void TestWebsocketService::attachInterface(ILaunchService* iface)
+  {
+    Imp::get().attachInterface(iface);
+  }
+
+  void TestWebsocketService::detachInterface(ILaunchService* iface)
   {
     Imp::get().detachInterface(iface);
   }
