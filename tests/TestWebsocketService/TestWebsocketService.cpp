@@ -219,6 +219,7 @@ namespace shape {
       {
         TRC_FUNCTION_ENTER(PAR(connId));
         for (auto it = m_connectionIdVect.begin(); it != m_connectionIdVect.end(); it++) {
+          std::cout << ">>> TestWebsocketService OnClose compare: " << connId << " " << *it << std::endl;
           if (*it == connId) {
             m_connectionIdVect.erase(it);
           }
