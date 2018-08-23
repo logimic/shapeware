@@ -28,3 +28,5 @@ else()
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${GoogleTest_LIBRARIES})
+target_compile_definitions(${PROJECT_NAME} PRIVATE GTEST_LINKED_AS_SHARED_LIBRARY=1)
+

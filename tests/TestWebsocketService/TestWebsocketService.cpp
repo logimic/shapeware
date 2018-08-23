@@ -33,6 +33,8 @@
 
 TRC_INIT_MODULE(shape::TestWebsocketService);
 
+//#define __null nullptr
+
 namespace shape {
   static std::map<std::string, TestWebsocketService::Imp*> s_instances;
   const std::string TEST_MSG_CLIENT = "Test message from client";
@@ -52,6 +54,7 @@ namespace shape {
     std::string m_expectedMessage;
 
     std::vector<std::string> m_connectionIdVect;
+    std::thread m_thread;
 
     Imp()
     {}
@@ -84,6 +87,8 @@ namespace shape {
         "******************************"
       );
 
+      std::cout << ">>> TestWebsocketService instance activate" << std::endl;
+
       props->getMemberAsString("instance", m_instanceName);
 
       s_instances.insert(std::make_pair(m_instanceName, this));
@@ -95,7 +100,7 @@ namespace shape {
 
         std::unique_lock<std::mutex> lck(m_mux);
         m_expectedMessage = msg;
-        //std::cout << m_expectedMessage << std::endl;
+        std::cout << m_expectedMessage << std::endl;
         m_msgCon.notify_all();
 
         TRC_FUNCTION_LEAVE("");
@@ -105,7 +110,7 @@ namespace shape {
       {
         TRC_FUNCTION_ENTER(PAR(connId));
         m_connectionIdVect.push_back(connId);
-        //std::cout << ">>> TestWebsocketService OnOpen" << std::endl;
+        std::cout << ">>> TestWebsocketService OnOpen" << std::endl;
         TRC_FUNCTION_LEAVE("");
       });
 
@@ -128,11 +133,14 @@ namespace shape {
 
         std::unique_lock<std::mutex> lck(m_mux);
         m_expectedMessage = msg;
-        //std::cout << m_expectedMessage << std::endl;
+        std::cout << m_expectedMessage << std::endl;
         m_msgCon.notify_all();
 
         TRC_FUNCTION_LEAVE("");
       });
+
+        std::cout << ">>> Start thread" << std::endl;
+       m_thread = std::thread([this]() { this->runTread(); });
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -185,6 +193,35 @@ namespace shape {
         m_iWebsocketService = nullptr;
       }
     }
+
+    void runTread()
+    {
+      TRC_FUNCTION_ENTER("");
+
+      //static int num = 0;
+
+      //while (m_runTreadFlag) {
+      //  num++;
+      //  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      //}
+
+      //::testing::InitGoogleTest(&argc, argv);
+      //int argc = 1;
+      //char argv[] = { "app" };
+
+      char  arg0[] = "app";
+      char* argv[] = { &arg0[0], NULL };
+      int   argc = (int)(sizeof(argv) / sizeof(argv[0])) - 1;
+
+      ::testing::InitGoogleTest(&argc, (char**)&argv);
+      int retval = RUN_ALL_TESTS();
+      std::cout << std::endl << "RUN_ALL_TESTS" << PAR(retval) << std::endl;
+
+      //m_iLaunchService->exit(retval);
+
+      TRC_FUNCTION_LEAVE("")
+    }
+
 
   };
 
@@ -261,6 +298,7 @@ namespace shape {
 
     void SetUp(void) override
     {
+      std::cout << ">>> SetUp" << std::endl;
       //we have 2 test instances
       ASSERT_EQ(2, s_instances.size());
 
@@ -298,7 +336,9 @@ namespace shape {
 
   TEST_F(FixTestWebsocketService, Client1Server1Message1)
   {
-    EXPECT_EQ(true, wss1->isStarted());
+    std::cout << ">>> TEST_F" << std::endl;
+    //EXPECT_EQ(true, wss1->isStarted());
+    EXPECT_TRUE(true == wss1->isStarted());
     
     //test 1st connect
     wsc1->connect(uri1);
@@ -310,7 +350,8 @@ namespace shape {
     EXPECT_EQ(msg, tws1->fetchMessage(MILLIS_WAIT));
 
     wsc1->close();
-    EXPECT_EQ(false, wsc1->isConnected());
+    //EXPECT_EQ(false, wsc1->isConnected());
+    EXPECT_FALSE(true == wss1->isStarted());
   }
 
   TEST_F(FixTestWebsocketService, Client1Server1Message2)
