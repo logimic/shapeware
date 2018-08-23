@@ -4,8 +4,8 @@ find_package(GoogleTest REQUIRED)
 
 set(COMPONENT shape::TestWebsocketService)
 DeclareShapeComponent(${COMPONENT})
-AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketClientService MANDATORY SINGLE)
-AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketService MANDATORY SINGLE)
+AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketClientService MANDATORY MULTIPLE)
+AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketService MANDATORY MULTIPLE)
 AddShapeRequiredInterface(${COMPONENT} shape::ITraceService MANDATORY MULTIPLE)
 ConfigureShapeComponent(${COMPONENT} COMPONENT_HXX)
 
