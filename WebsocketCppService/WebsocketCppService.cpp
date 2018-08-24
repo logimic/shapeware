@@ -256,7 +256,7 @@ namespace shape {
 
     void sendMessage(const std::string & msg, const std::string& connId)
     {
-      //TRC_FUNCTION_ENTER(PAR(connId));
+      TRC_FUNCTION_ENTER(PAR(connId));
       if (m_runThd) {
         if (connId.empty()) { //broadcast if empty
           for (auto it : m_connectionsStrMap) {
@@ -286,7 +286,7 @@ namespace shape {
       else {
         TRC_WARNING("Websocket is not started" << PAR(m_port));
       }
-      //TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE("");
     }
 
     void start()
@@ -295,6 +295,7 @@ namespace shape {
 
       // listen on specified port
       try {
+        m_server.set_reuse_addr(true);
         m_server.listen(m_port);
       }
       catch (websocketpp::exception const &e) {
@@ -321,20 +322,26 @@ namespace shape {
       if (m_runThd) {
         m_runThd = false;
 
+        TRC_INFORMATION("stop listen");
         // Stopping the Websocket listener and closing outstanding connections.
         websocketpp::lib::error_code ec;
-        m_server.stop_listening(ec);
-        if (ec) {
-          // Failed to stop listening. Log reason using ec.message().
-          return;
+        if (m_server.is_listening()) {
+          m_server.stop_listening(ec);
+          if (ec) {
+            // Failed to stop listening. Log reason using ec.message().
+            TRC_INFORMATION("Failed stop_listening: " << ec.message());
+            //return;
+          }
         }
 
         // Close all existing websocket connections.
         std::unique_lock<std::mutex> lock(m_mux);
 
+        TRC_INFORMATION("close connections");
         std::string data = "Terminating connection...";
         for (auto con : m_connectionsStrMap) {
           websocketpp::lib::error_code ec;
+          TRC_INFORMATION("close connection: " << con.second);
           m_server.close(con.first, websocketpp::close::status::normal, data, ec); // send text message.
           if (ec) { // we got an error
                     // Error closing websocket. Log reason using ec.message().
@@ -342,7 +349,9 @@ namespace shape {
         }
 
         // Stop the endpoint.
-        m_server.stop();
+        TRC_INFORMATION("stop server");
+        //m_server.stop();
+        //m_server.reset();
 
         if (m_thd.joinable()) {
           std::cout << "Joining WsServer thread ..." << std::endl;
