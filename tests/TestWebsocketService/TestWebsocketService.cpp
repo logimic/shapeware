@@ -76,7 +76,7 @@ namespace shape {
 
       std::unique_lock<std::mutex> lck(m_mux);
       m_expectedMessage = msg;
-      std::cout << m_expectedMessage << std::endl;
+      //std::cout << m_expectedMessage << std::endl;
       m_msgCon.notify_all();
 
       TRC_FUNCTION_LEAVE("");
@@ -88,7 +88,7 @@ namespace shape {
 
       std::unique_lock<std::mutex> lck(m_mux);
       m_expectedMessage = OPEN_MSG_CLIENT;
-      std::cout << ">>> TestWebsocketService OnOpen client" << std::endl;
+      //std::cout << ">>> TestWebsocketService OnOpen client" << std::endl;
       m_msgCon.notify_all();
 
       TRC_FUNCTION_LEAVE("");
@@ -100,7 +100,7 @@ namespace shape {
 
       std::unique_lock<std::mutex> lck(m_mux);
       m_expectedMessage = CLOSE_MSG_CLIENT;
-      std::cout << ">>> TestWebsocketService OnClose client" << std::endl;
+      //std::cout << ">>> TestWebsocketService OnClose client" << std::endl;
       m_msgCon.notify_all();
 
       TRC_FUNCTION_LEAVE("");
@@ -146,7 +146,7 @@ namespace shape {
 
       std::unique_lock<std::mutex> lck(m_mux);
       m_expectedMessage = msg;
-      std::cout << m_expectedMessage << std::endl;
+      //std::cout << m_expectedMessage << std::endl;
       m_msgCon.notify_all();
 
       TRC_FUNCTION_LEAVE("");
@@ -159,7 +159,7 @@ namespace shape {
       std::unique_lock<std::mutex> lck(m_mux);
       m_expectedMessage = OPEN_MSG_SERVER;
       m_connectionIdVect.push_back(connId);
-      std::cout << ">>> TestWebsocketService OnOpen server" << std::endl;
+      //std::cout << ">>> TestWebsocketService OnOpen server" << std::endl;
       m_msgCon.notify_all();
 
       TRC_FUNCTION_LEAVE("");
@@ -173,14 +173,14 @@ namespace shape {
       m_expectedMessage = CLOSE_MSG_SERVER;
 
       for (auto it = m_connectionIdVect.begin(); it != m_connectionIdVect.end(); it++) {
-        std::cout << ">>> TestWebsocketService OnClose server compare: " << connId << " " << *it << std::endl;
+        //std::cout << ">>> TestWebsocketService OnClose server compare: " << connId << " " << *it << std::endl;
         if (*it == connId) {
           m_connectionIdVect.erase(it);
         }
         break;
       }
 
-      std::cout << ">>> TestWebsocketService OnClose server: " << PAR(m_connectionIdVect.size()) << std::endl;
+      //std::cout << ">>> TestWebsocketService OnClose server: " << PAR(m_connectionIdVect.size()) << std::endl;
       m_msgCon.notify_all();
 
       TRC_FUNCTION_LEAVE("");
@@ -230,11 +230,11 @@ namespace shape {
         "******************************"
       );
 
-      std::cout << ">>> TestWebsocketService instance activate" << std::endl;
+      //std::cout << ">>> TestWebsocketService instance activate" << std::endl;
 
       props->getMemberAsString("instance", m_instanceName);
 
-      std::cout << ">>> Start thread" << std::endl;
+      //std::cout << ">>> Start thread" << std::endl;
       m_thread = std::thread([this]() { this->runTread(); });
 
       TRC_FUNCTION_LEAVE("")
@@ -326,7 +326,7 @@ namespace shape {
 
       ::testing::InitGoogleTest(&argc, (char**)&argv);
       int retval = RUN_ALL_TESTS();
-      std::cout << std::endl << "RUN_ALL_TESTS" << PAR(retval) << std::endl;
+      //std::cout << std::endl << "RUN_ALL_TESTS" << PAR(retval) << std::endl;
 
       m_iLaunchService->exit(retval);
 
@@ -422,7 +422,7 @@ namespace shape {
 
     void SetUp(void) override
     {
-      std::cout << ">>> SetUp" << std::endl;
+      //std::cout << ">>> SetUp" << std::endl;
       //we have 2 pairs of test instances
       tws1 = &TestWebsocketService::Imp::get();
       tws2 = &TestWebsocketService::Imp::get();
