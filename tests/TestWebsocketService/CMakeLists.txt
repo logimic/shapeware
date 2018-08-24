@@ -6,6 +6,7 @@ set(COMPONENT shape::TestWebsocketService)
 DeclareShapeComponent(${COMPONENT})
 AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketClientService MANDATORY MULTIPLE)
 AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketService MANDATORY MULTIPLE)
+AddShapeRequiredInterface(${COMPONENT} shape::ILaunchService MANDATORY SINGLE)
 AddShapeRequiredInterface(${COMPONENT} shape::ITraceService MANDATORY MULTIPLE)
 ConfigureShapeComponent(${COMPONENT} COMPONENT_HXX)
 
