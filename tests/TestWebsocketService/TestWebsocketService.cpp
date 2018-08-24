@@ -34,22 +34,20 @@
 
 TRC_INIT_MODULE(shape::TestWebsocketService);
 
-//#define __null nullptr
-
 namespace shape {
   const std::string TEST_MSG_CLIENT = "Test message from client";
   const std::string TEST_MSG_SERVER = "Test message from server";
   const std::string OPEN_MSG_SERVER = "Open connection";
   const std::string CLOSE_MSG_SERVER = "Close connection";
-  const unsigned MILLIS_WAIT = 3000;
+  const unsigned MILLIS_WAIT = 2000;
   static int cnt = 0;
 
-  class EventHandler
+  class ClientEventHandler
   {
   public:
-    EventHandler()
+    ClientEventHandler()
     {
-      m_messageStrHandlerFunc = [&](const std::string& msg) { messageStrHandlerFunc(msg); };
+      m_messageStrHandlerFunc = [&](const std::string& msg) { messageStrHandler(msg); };
     }
 
     std::string fetchMessage(unsigned millisToWait)
@@ -68,8 +66,7 @@ namespace shape {
       return expectedMessage;
     }
 
-    //IWebsocketClientService::MessageHandlerFunc messageHandlerFunc;
-    void messageStrHandlerFunc(const std::string& msg)
+    void messageStrHandler(const std::string& msg)
     {
       TRC_FUNCTION_ENTER(PAR(msg));
 
@@ -81,13 +78,91 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
-    //IWebsocketClientService::OpenHandlerFunc openHandlerFunc;
-    //IWebsocketClientService::CloseHandlerFunc closeHandlerFunc;
-
     std::condition_variable m_msgCon;
     std::mutex m_mux;
     std::string m_expectedMessage;
     IWebsocketClientService::MessageStrHandlerFunc m_messageStrHandlerFunc;
+  };
+
+  class ServerEventHandler
+  {
+  public:
+    ServerEventHandler()
+    {
+      m_messageStrHandlerFunc = [&](const std::string& msg, const std::string& connId) { messageStrHandler(msg, connId); };
+      m_openHandlerFunc = [&](const std::string& connId) { openHandler(connId); };
+      m_closeHandlerFunc = [&](const std::string& connId) { closeHandler(connId); };
+    }
+
+    std::string fetchMessage(unsigned millisToWait)
+    {
+      TRC_FUNCTION_ENTER(PAR(millisToWait));
+
+      std::unique_lock<std::mutex> lck(m_mux);
+      if (m_expectedMessage.empty()) {
+        while (m_msgCon.wait_for(lck, std::chrono::milliseconds(millisToWait)) != std::cv_status::timeout) {
+          if (!m_expectedMessage.empty()) break;
+        }
+      }
+      std::string expectedMessage = m_expectedMessage;
+      m_expectedMessage.clear();
+      TRC_FUNCTION_LEAVE(PAR(expectedMessage));
+      return expectedMessage;
+    }
+
+    void messageStrHandler(const std::string& msg, const std::string& connId)
+    {
+      TRC_FUNCTION_ENTER(PAR(msg) << PAR(connId));
+
+      std::unique_lock<std::mutex> lck(m_mux);
+      m_expectedMessage = msg;
+      std::cout << m_expectedMessage << std::endl;
+      m_msgCon.notify_all();
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void openHandler(const std::string& connId)
+    {
+      TRC_FUNCTION_ENTER(PAR(connId));
+
+      std::unique_lock<std::mutex> lck(m_mux);
+      m_expectedMessage = OPEN_MSG_SERVER;
+      m_connectionIdVect.push_back(connId);
+      std::cout << ">>> TestWebsocketService OnOpen" << std::endl;
+      m_msgCon.notify_all();
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void closeHandler(const std::string& connId)
+    {
+      TRC_FUNCTION_ENTER(PAR(connId));
+
+      std::unique_lock<std::mutex> lck(m_mux);
+      m_expectedMessage = CLOSE_MSG_SERVER;
+
+      for (auto it = m_connectionIdVect.begin(); it != m_connectionIdVect.end(); it++) {
+        std::cout << ">>> TestWebsocketService OnClose compare: " << connId << " " << *it << std::endl;
+        if (*it == connId) {
+          m_connectionIdVect.erase(it);
+        }
+        break;
+      }
+
+      std::cout << ">>> TestWebsocketService OnClose: " << PAR(m_connectionIdVect.size()) << std::endl;
+      m_msgCon.notify_all();
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    std::condition_variable m_msgCon;
+    std::mutex m_mux;
+    std::string m_expectedMessage;
+    IWebsocketService::MessageStrHandlerFunc m_messageStrHandlerFunc;
+    IWebsocketService::OpenHandlerFunc m_openHandlerFunc;
+    IWebsocketService::CloseHandlerFunc m_closeHandlerFunc;
+    std::vector<std::string> m_connectionIdVect;
 
   };
 
@@ -101,16 +176,11 @@ namespace shape {
     ILaunchService* m_iLaunchService = nullptr;
 
     std::string m_instanceName;
-    std::map<IWebsocketClientService*, std::shared_ptr<EventHandler>> m_iWebsocketClientServices;
-    std::set<IWebsocketService*> m_iWebsocketServices;
+    std::map<IWebsocketClientService*, std::shared_ptr<ClientEventHandler>> m_iWebsocketClientServices;
+    std::map<IWebsocketService*, std::shared_ptr<ServerEventHandler>> m_iWebsocketServices;
     std::mutex m_iWebsocketServicesMux;
     std::mutex m_iWebsocketClientServicesMux;
 
-    std::condition_variable m_msgCon;
-    std::mutex m_mux;
-    std::string m_expectedMessage;
-
-    std::vector<std::string> m_connectionIdVect;
     std::thread m_thread;
 
     static Imp& get() {
@@ -120,22 +190,6 @@ namespace shape {
 
     ~Imp()
     {}
-
-    std::string fetchMessage(unsigned millisToWait)
-    {
-      TRC_FUNCTION_ENTER(PAR(millisToWait));
-
-      std::unique_lock<std::mutex> lck(m_mux);
-      if (m_expectedMessage.empty()) {
-        while (m_msgCon.wait_for(lck, std::chrono::milliseconds(millisToWait)) != std::cv_status::timeout) {
-          if (!m_expectedMessage.empty()) break;
-        }
-      }
-      std::string expectedMessage = m_expectedMessage;
-      m_expectedMessage.clear();
-      TRC_FUNCTION_LEAVE(PAR(expectedMessage));
-      return expectedMessage;
-    }
 
     void activate(const Properties *props)
     {
@@ -176,16 +230,14 @@ namespace shape {
     {
     }
 
-
     void attachInterface(IWebsocketClientService* iface)
     {
       std::lock_guard<std::mutex> lck(m_iWebsocketClientServicesMux);
 
-      auto ret = m_iWebsocketClientServices.insert(std::make_pair(iface, std::shared_ptr<EventHandler>(shape_new EventHandler())));
+      auto ret = m_iWebsocketClientServices.insert(std::make_pair(iface, std::shared_ptr<ClientEventHandler>(shape_new ClientEventHandler())));
 
       // client handlers
       iface->registerMessageStrHandler(ret.first->second->m_messageStrHandlerFunc);
-
     }
 
     void detachInterface(IWebsocketClientService* iface)
@@ -199,54 +251,12 @@ namespace shape {
     {
       std::lock_guard<std::mutex> lck(m_iWebsocketServicesMux);
 
-      m_iWebsocketServices.insert(iface);
+      auto ret = m_iWebsocketServices.insert(std::make_pair(iface, std::shared_ptr<ServerEventHandler>(shape_new ServerEventHandler())));
+      
       // server handlers
-      iface->registerMessageStrHandler([&](const std::string& msg, const std::string& connId)
-      {
-        TRC_FUNCTION_ENTER(PAR(msg) << PAR(connId));
-
-        std::unique_lock<std::mutex> lck(m_mux);
-        m_expectedMessage = msg;
-        std::cout << m_expectedMessage << std::endl;
-        m_msgCon.notify_all();
-
-        TRC_FUNCTION_LEAVE("");
-      });
-
-      iface->registerOpenHandler([&](const std::string& connId)
-      {
-        TRC_FUNCTION_ENTER(PAR(connId));
-
-        std::unique_lock<std::mutex> lck(m_mux);
-        m_expectedMessage = OPEN_MSG_SERVER;
-        m_connectionIdVect.push_back(connId);
-        std::cout << ">>> TestWebsocketService OnOpen" << std::endl;
-        m_msgCon.notify_all();
-
-        TRC_FUNCTION_LEAVE("");
-      });
-
-      iface->registerCloseHandler([&](const std::string& connId)
-      {
-        TRC_FUNCTION_ENTER(PAR(connId));
-
-        std::unique_lock<std::mutex> lck(m_mux);
-        m_expectedMessage = CLOSE_MSG_SERVER;
-
-        for (auto it = m_connectionIdVect.begin(); it != m_connectionIdVect.end(); it++) {
-          std::cout << ">>> TestWebsocketService OnClose compare: " << connId << " " << *it << std::endl;
-          if (*it == connId) {
-            m_connectionIdVect.erase(it);
-          }
-          break;
-        }
-
-        std::cout << ">>> TestWebsocketService OnClose: " << PAR(m_connectionIdVect.size()) << std::endl;
-        m_msgCon.notify_all();
-
-        TRC_FUNCTION_LEAVE("");
-      });
-
+      iface->registerMessageStrHandler(ret.first->second->m_messageStrHandlerFunc);
+      iface->registerOpenHandler(ret.first->second->m_openHandlerFunc);
+      iface->registerCloseHandler(ret.first->second->m_closeHandlerFunc);
     }
 
     void detachInterface(IWebsocketService* iface)
@@ -271,16 +281,6 @@ namespace shape {
       }
     }
 
-    //void waitClentConnect()
-    //{
-
-    //}
-
-    //void waitClientClose()
-    //{
-
-    //}
-
     void runTread()
     {
       TRC_FUNCTION_ENTER("");
@@ -301,6 +301,7 @@ namespace shape {
 
   };
 
+  /////////////////////////////////
   TestWebsocketService::TestWebsocketService()
   {
   }
@@ -374,8 +375,10 @@ namespace shape {
     IWebsocketService *wss2 = nullptr;
     IWebsocketClientService *wsc1 = nullptr;
     IWebsocketClientService *wsc2 = nullptr;
-    EventHandler *wsch1 = nullptr;
-    EventHandler *wsch2 = nullptr;
+    ClientEventHandler *wsch1 = nullptr;
+    ClientEventHandler *wsch2 = nullptr;
+    ServerEventHandler *wssh1 = nullptr;
+    ServerEventHandler *wssh2 = nullptr;
     int port1 = 0;
     int port2 = 0;
     const std::string uri = "ws://localhost:";
@@ -392,8 +395,10 @@ namespace shape {
       ASSERT_EQ(2, tws1->m_iWebsocketClientServices.size());
 
       auto its = TestWebsocketService::Imp::get().m_iWebsocketServices.begin();
-      wss1 = *its++;
-      wss2 = *its;
+      wss1 = its->first;
+      wssh1 = its->second.get();
+      wss2 = (++its)->first;
+      wssh2 = its->second.get();
       auto itc = TestWebsocketService::Imp::get().m_iWebsocketClientServices.begin();
       wsc1 = itc->first;
       wsch1 = itc->second.get();
@@ -430,16 +435,16 @@ namespace shape {
 
     //test 1st connect
     wsc1->connect(uri1);
-    EXPECT_EQ(OPEN_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
     wsc1->sendMessage(msg);
-    EXPECT_EQ(msg, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(msg, wssh1->fetchMessage(MILLIS_WAIT));
 
     wsc1->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
@@ -447,125 +452,125 @@ namespace shape {
   {
     //test reconnect
     wsc1->connect(uri1);
-    EXPECT_EQ(OPEN_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
     wsc1->sendMessage(msg);
-    EXPECT_EQ(msg, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(msg, wssh1->fetchMessage(MILLIS_WAIT));
 
     wsc1->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Client1Server2Message)
   {
     wsc1->connect(uri2);
-    EXPECT_EQ(OPEN_MSG_SERVER, tws2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
     wsc1->sendMessage(msg);
-    EXPECT_EQ(msg, tws2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(msg, wssh2->fetchMessage(MILLIS_WAIT));
 
     wsc1->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Client2Server1Message)
   {
     wsc2->connect(uri1);
-    EXPECT_EQ(OPEN_MSG_SERVER, tws2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc2->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
     wsc2->sendMessage(msg);
-    EXPECT_EQ(msg, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(msg, wssh1->fetchMessage(MILLIS_WAIT));
 
     wsc2->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, tws2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Server1Client1Message)
   {
     wsc1->connect(uri1);
-    EXPECT_EQ(OPEN_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc1->isConnected());
 
-    ASSERT_EQ(1, tws1->m_connectionIdVect.size());
+    ASSERT_EQ(1, wssh1->m_connectionIdVect.size());
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
-    wss1->sendMessage(msg, tws1->m_connectionIdVect[0]);
+    wss1->sendMessage(msg, wssh1->m_connectionIdVect[0]);
     EXPECT_EQ(msg, wsch1->fetchMessage(MILLIS_WAIT));
 
     wsc1->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Server2Client2Message)
   {
     wsc2->connect(uri2);
-    EXPECT_EQ(OPEN_MSG_SERVER, tws2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc2->isConnected());
 
-    ASSERT_EQ(1, tws2->m_connectionIdVect.size());
+    ASSERT_EQ(1, wssh2->m_connectionIdVect.size());
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
-    wss2->sendMessage(msg, tws2->m_connectionIdVect[0]);
+    wss2->sendMessage(msg, wssh2->m_connectionIdVect[0]);
     EXPECT_EQ(msg, wsch2->fetchMessage(MILLIS_WAIT));
 
     wsc2->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, tws2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(false, wsc2->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Client12Server1Message)
   {
     wsc1->connect(uri1);
-    EXPECT_EQ(OPEN_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc1->isConnected());
     wsc2->connect(uri1);
-    EXPECT_EQ(OPEN_MSG_SERVER, tws2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc2->isConnected());
 
     {
       std::string msg(TEST_MSG_CLIENT);
       msg += std::to_string(++cnt);
       wsc1->sendMessage(msg);
-      EXPECT_EQ(msg, tws1->fetchMessage(MILLIS_WAIT));
+      EXPECT_EQ(msg, wssh1->fetchMessage(MILLIS_WAIT));
     }
 
     {
       std::string msg(TEST_MSG_CLIENT);
       msg += std::to_string(++cnt);
       wsc2->sendMessage(msg);
-      EXPECT_EQ(msg, tws1->fetchMessage(MILLIS_WAIT));
+      EXPECT_EQ(msg, wssh1->fetchMessage(MILLIS_WAIT));
     }
     //keep connections
   }
 
   TEST_F(FixTestWebsocketService, Server1Client12Message)
   {
-    ASSERT_GE(2, tws1->m_connectionIdVect.size());
+    ASSERT_GE(2, wssh1->m_connectionIdVect.size());
 
     {
       std::string msg(TEST_MSG_SERVER);
       msg += std::to_string(++cnt);
-      wss1->sendMessage(msg, tws1->m_connectionIdVect[0]);
+      wss1->sendMessage(msg, wssh1->m_connectionIdVect[0]);
       EXPECT_EQ(msg, wsch1->fetchMessage(MILLIS_WAIT));
     }
 
     {
       std::string msg(TEST_MSG_SERVER);
       msg += std::to_string(++cnt);
-      wss1->sendMessage(msg, tws1->m_connectionIdVect[1]);
+      wss1->sendMessage(msg, wssh1->m_connectionIdVect[1]);
       EXPECT_EQ(msg, wsch2->fetchMessage(MILLIS_WAIT));
     }
 
@@ -573,7 +578,7 @@ namespace shape {
 
   TEST_F(FixTestWebsocketService, Server1BroadcastMessage)
   {
-    EXPECT_GE(2, tws1->m_connectionIdVect.size());
+    EXPECT_GE(2, wssh1->m_connectionIdVect.size());
 
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
@@ -591,18 +596,18 @@ namespace shape {
     msg += std::to_string(++cnt);
     std::vector<uint8_t> msgVect((uint8_t*)msg.data(), (uint8_t*)msg.data() + msg.size());
     wsc1->sendMessage(msgVect);
-    EXPECT_EQ(msg, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(msg, wssh1->fetchMessage(MILLIS_WAIT));
   }
 
   TEST_F(FixTestWebsocketService, Server1Client1MessageVect)
   {
     EXPECT_EQ(true, wsc1->isConnected());
 
-    ASSERT_LE(1, tws1->m_connectionIdVect.size());
+    ASSERT_LE(1, wssh1->m_connectionIdVect.size());
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
     std::vector<uint8_t> msgVect((uint8_t*)msg.data(), (uint8_t*)msg.data() + msg.size());
-    wss1->sendMessage(msgVect, tws1->m_connectionIdVect[0]);
+    wss1->sendMessage(msgVect, wssh1->m_connectionIdVect[0]);
     EXPECT_EQ(msg, wsch1->fetchMessage(MILLIS_WAIT));
   }
 
@@ -612,10 +617,10 @@ namespace shape {
     EXPECT_EQ(true, wsc2->isConnected());
 
     wsc1->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(false, wsc1->isConnected());
     wsc2->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, tws2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT)); //connected to wss1 in Client12Server1Message
     EXPECT_EQ(false, wsc2->isConnected());
   }
 }
