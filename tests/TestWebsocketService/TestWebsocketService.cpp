@@ -41,7 +41,7 @@ namespace shape {
   const std::string TEST_MSG_SERVER = "Test message from server";
   const std::string OPEN_MSG_SERVER = "Open connection";
   const std::string CLOSE_MSG_SERVER = "Close connection";
-  const unsigned MILLIS_WAIT = 2000;
+  const unsigned MILLIS_WAIT = 3000;
   static int cnt = 0;
 
   class EventHandler
@@ -164,6 +164,10 @@ namespace shape {
         "TestWebsocketService instance deactivate" << std::endl <<
         "******************************"
       );
+
+      if(m_thread.joinable()) {
+        m_thread.join();
+      }
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -494,7 +498,7 @@ namespace shape {
     EXPECT_EQ(OPEN_MSG_SERVER, tws1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc1->isConnected());
 
-    ASSERT_GE(1, tws1->m_connectionIdVect.size());
+    ASSERT_EQ(1, tws1->m_connectionIdVect.size());
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
     wss1->sendMessage(msg, tws1->m_connectionIdVect[0]);
@@ -511,7 +515,7 @@ namespace shape {
     EXPECT_EQ(OPEN_MSG_SERVER, tws2->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(true, wsc2->isConnected());
 
-    ASSERT_GE(1, tws2->m_connectionIdVect.size());
+    ASSERT_EQ(1, tws2->m_connectionIdVect.size());
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
     wss2->sendMessage(msg, tws2->m_connectionIdVect[0]);

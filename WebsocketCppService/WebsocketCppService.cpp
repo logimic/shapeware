@@ -249,7 +249,6 @@ namespace shape {
 
     void sendMessage(const std::vector<uint8_t> & msg, const std::string& connId)
     {
-      sendMessage(std::string((char*)msg.data(), msg.size()), connId);
       std::string msgStr((char*)msg.data(), msg.size());
       sendMessage(msgStr, connId);
       TRC_FUNCTION_LEAVE("");
