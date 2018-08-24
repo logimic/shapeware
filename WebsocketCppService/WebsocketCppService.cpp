@@ -275,7 +275,8 @@ namespace shape {
               websocketpp::lib::error_code ec;
               m_server.send(it.first, msg, websocketpp::frame::opcode::text, ec); // send text message.
               if (ec) {
-                TRC_WARNING("Cannot send message: " << PAR(m_port) << ec.message());
+                auto conState = m_server.get_con_from_hdl(it.first)->get_state();
+                TRC_WARNING("Cannot send message: " << PAR(conState) << PAR(m_port) << ec.message());
               }
               break;
             }

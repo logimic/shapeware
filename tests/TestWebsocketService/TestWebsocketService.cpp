@@ -37,8 +37,10 @@ TRC_INIT_MODULE(shape::TestWebsocketService);
 namespace shape {
   const std::string TEST_MSG_CLIENT = "Test message from client";
   const std::string TEST_MSG_SERVER = "Test message from server";
-  const std::string OPEN_MSG_SERVER = "Open connection";
-  const std::string CLOSE_MSG_SERVER = "Close connection";
+  const std::string OPEN_MSG_SERVER = "OnOpen connection server";
+  const std::string CLOSE_MSG_SERVER = "OnClose connection server";
+  const std::string OPEN_MSG_CLIENT = "OnOpen connection client";
+  const std::string CLOSE_MSG_CLIENT = "OnClose connection client";
   const unsigned MILLIS_WAIT = 1000;
   static int cnt = 0;
 
@@ -48,6 +50,8 @@ namespace shape {
     ClientEventHandler()
     {
       m_messageStrHandlerFunc = [&](const std::string& msg) { messageStrHandler(msg); };
+      m_closeHandlerFunc = [&]() { closeHandler(); };
+      m_openHandlerFunc = [&]() { openHandler(); };
     }
 
     std::string fetchMessage(unsigned millisToWait)
@@ -78,10 +82,36 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
+    void openHandler()
+    {
+      TRC_FUNCTION_ENTER("");
+
+      std::unique_lock<std::mutex> lck(m_mux);
+      m_expectedMessage = OPEN_MSG_CLIENT;
+      std::cout << ">>> TestWebsocketService OnOpen client" << std::endl;
+      m_msgCon.notify_all();
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void closeHandler()
+    {
+      TRC_FUNCTION_ENTER("");
+
+      std::unique_lock<std::mutex> lck(m_mux);
+      m_expectedMessage = CLOSE_MSG_CLIENT;
+      std::cout << ">>> TestWebsocketService OnClose client" << std::endl;
+      m_msgCon.notify_all();
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
     std::condition_variable m_msgCon;
     std::mutex m_mux;
     std::string m_expectedMessage;
     IWebsocketClientService::MessageStrHandlerFunc m_messageStrHandlerFunc;
+    IWebsocketClientService::OpenHandlerFunc m_openHandlerFunc;
+    IWebsocketClientService::CloseHandlerFunc m_closeHandlerFunc;
   };
 
   class ServerEventHandler
@@ -129,7 +159,7 @@ namespace shape {
       std::unique_lock<std::mutex> lck(m_mux);
       m_expectedMessage = OPEN_MSG_SERVER;
       m_connectionIdVect.push_back(connId);
-      std::cout << ">>> TestWebsocketService OnOpen" << std::endl;
+      std::cout << ">>> TestWebsocketService OnOpen server" << std::endl;
       m_msgCon.notify_all();
 
       TRC_FUNCTION_LEAVE("");
@@ -143,14 +173,14 @@ namespace shape {
       m_expectedMessage = CLOSE_MSG_SERVER;
 
       for (auto it = m_connectionIdVect.begin(); it != m_connectionIdVect.end(); it++) {
-        std::cout << ">>> TestWebsocketService OnClose compare: " << connId << " " << *it << std::endl;
+        std::cout << ">>> TestWebsocketService OnClose server compare: " << connId << " " << *it << std::endl;
         if (*it == connId) {
           m_connectionIdVect.erase(it);
         }
         break;
       }
 
-      std::cout << ">>> TestWebsocketService OnClose: " << PAR(m_connectionIdVect.size()) << std::endl;
+      std::cout << ">>> TestWebsocketService OnClose server: " << PAR(m_connectionIdVect.size()) << std::endl;
       m_msgCon.notify_all();
 
       TRC_FUNCTION_LEAVE("");
@@ -238,12 +268,17 @@ namespace shape {
 
       // client handlers
       iface->registerMessageStrHandler(ret.first->second->m_messageStrHandlerFunc);
+      iface->registerOpenHandler(ret.first->second->m_openHandlerFunc);
+      iface->registerCloseHandler(ret.first->second->m_closeHandlerFunc);
     }
 
     void detachInterface(IWebsocketClientService* iface)
     {
       std::lock_guard<std::mutex> lck(m_iWebsocketClientServicesMux);
       iface->unregisterMessageStrHandler();
+      iface->unregisterMessageHandler();
+      iface->unregisterOpenHandler();
+      iface->unregisterCloseHandler();
       m_iWebsocketClientServices.erase(iface);
     }
 
@@ -436,6 +471,8 @@ namespace shape {
     //test 1st connect
     wsc1->connect(uri1);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(true, wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
@@ -445,6 +482,8 @@ namespace shape {
 
     wsc1->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
@@ -454,6 +493,8 @@ namespace shape {
     //test reconnect
     wsc1->connect(uri1);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(true, wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
@@ -463,6 +504,8 @@ namespace shape {
 
     wsc1->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
@@ -471,6 +514,8 @@ namespace shape {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Client1Server2Message");
     wsc1->connect(uri2);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(true, wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
@@ -480,6 +525,8 @@ namespace shape {
 
     wsc1->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
@@ -488,6 +535,8 @@ namespace shape {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Client2Server1Message");
     wsc2->connect(uri1);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(true, wsc2->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
@@ -497,6 +546,8 @@ namespace shape {
 
     wsc2->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
@@ -505,6 +556,8 @@ namespace shape {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server1Client1Message");
     wsc1->connect(uri1);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(true, wsc1->isConnected());
 
     ASSERT_EQ(1, wssh1->m_connectionIdVect.size());
@@ -515,6 +568,8 @@ namespace shape {
 
     wsc1->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
@@ -523,6 +578,8 @@ namespace shape {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server2Client2Message");
     wsc2->connect(uri2);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(true, wsc2->isConnected());
 
     ASSERT_EQ(1, wssh2->m_connectionIdVect.size());
@@ -533,6 +590,8 @@ namespace shape {
 
     wsc2->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(false, wsc2->isConnected());
   }
 
@@ -541,9 +600,13 @@ namespace shape {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Client12Server1Message");
     wsc1->connect(uri1);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(true, wsc1->isConnected());
     wsc2->connect(uri1);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(true, wsc2->isConnected());
 
     {
@@ -629,9 +692,14 @@ namespace shape {
 
     wsc1->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(false, wsc1->isConnected());
+    
     wsc2->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT)); //connected to wss1 in Client12Server1Message
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
+
     EXPECT_EQ(false, wsc2->isConnected());
   }
 }
