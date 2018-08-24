@@ -221,7 +221,7 @@ namespace shape {
       TRC_FUNCTION_ENTER("");
 
       std::unique_lock<std::mutex> lck(m_connectedMux);
-      if (m_connected) {
+      //if (m_connected) {
         websocketpp::lib::error_code ec;
         m_client.close(m_connection_hdl, websocketpp::close::status::going_away, "Terminating connection...", ec);
         if (ec) {
@@ -232,7 +232,7 @@ namespace shape {
         //std::cout << ">>> WebsocketCppClientService CloseLocal" << std::endl;
         m_connectedCondition.notify_all();
 
-      }
+      //}
       TRC_FUNCTION_LEAVE("");
     }
 
@@ -334,7 +334,8 @@ namespace shape {
 
       m_client.stop_perpetual();
       close();
-      m_thd.join();
+      if (m_thd.joinable())
+        m_thd.join();
 
       TRC_FUNCTION_LEAVE("")
     }
