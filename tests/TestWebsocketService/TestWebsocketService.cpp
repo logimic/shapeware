@@ -463,6 +463,51 @@ namespace shape {
 
   };
 
+  TEST_F(FixTestWebsocketService, Server1Client1Message)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server1Client1Message");
+    wsc1->connect(uri1);
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
+    EXPECT_EQ(true, wsc1->isConnected());
+    //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    ASSERT_EQ(1, wssh1->m_connectionIdVect.size());
+    std::string msg(TEST_MSG_SERVER);
+    msg += std::to_string(++cnt);
+    wss1->sendMessage(msg, wssh1->m_connectionIdVect[0]);
+    EXPECT_EQ(msg, wsch1->fetchMessage(MILLIS_WAIT));
+
+    wsc1->close();
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
+
+    EXPECT_EQ(false, wsc1->isConnected());
+  }
+
+  TEST_F(FixTestWebsocketService, Server2Client2Message)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server2Client2Message");
+    wsc2->connect(uri2);
+    EXPECT_EQ(OPEN_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(OPEN_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
+
+    EXPECT_EQ(true, wsc2->isConnected());
+
+    ASSERT_EQ(1, wssh2->m_connectionIdVect.size());
+    std::string msg(TEST_MSG_SERVER);
+    msg += std::to_string(++cnt);
+    wss2->sendMessage(msg, wssh2->m_connectionIdVect[0]);
+    EXPECT_EQ(msg, wsch2->fetchMessage(MILLIS_WAIT));
+
+    wsc2->close();
+    EXPECT_EQ(CLOSE_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
+    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
+
+    EXPECT_EQ(false, wsc2->isConnected());
+  }
+
   TEST_F(FixTestWebsocketService, Client1Server1Message1)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Client1Server1Message1");
@@ -551,52 +596,6 @@ namespace shape {
     EXPECT_EQ(false, wsc1->isConnected());
   }
 
-  TEST_F(FixTestWebsocketService, Server2Client2Message)
-  {
-    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server2Client2Message");
-    wsc2->connect(uri2);
-    EXPECT_EQ(OPEN_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
-    EXPECT_EQ(OPEN_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
-
-    EXPECT_EQ(true, wsc2->isConnected());
-
-    ASSERT_EQ(1, wssh2->m_connectionIdVect.size());
-    std::string msg(TEST_MSG_SERVER);
-    msg += std::to_string(++cnt);
-    wss2->sendMessage(msg, wssh2->m_connectionIdVect[0]);
-    EXPECT_EQ(msg, wsch2->fetchMessage(MILLIS_WAIT));
-
-    wsc2->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
-    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
-
-    EXPECT_EQ(false, wsc2->isConnected());
-  }
-
-  TEST_F(FixTestWebsocketService, Server1Client1Message)
-  {
-    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server1Client1Message");
-    wsc1->connect(uri1);
-    EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
-    EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
-
-    EXPECT_EQ(true, wsc1->isConnected());
-    //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-    ASSERT_EQ(1, wssh1->m_connectionIdVect.size());
-    std::string msg(TEST_MSG_SERVER);
-    msg += std::to_string(++cnt);
-    wss1->sendMessage(msg, wssh1->m_connectionIdVect[0]);
-    EXPECT_EQ(msg, wsch1->fetchMessage(MILLIS_WAIT));
-
-    wsc1->close();
-    EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
-    EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
-
-    EXPECT_EQ(false, wsc1->isConnected());
-  }
-
-  
   TEST_F(FixTestWebsocketService, Client12Server1Message)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Client12Server1Message");
