@@ -28,6 +28,4 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-target_link_libraries(${PROJECT_NAME} ${GoogleTest_LIBRARIES})
-target_compile_definitions(${PROJECT_NAME} PRIVATE GTEST_LINKED_AS_SHARED_LIBRARY=1)
-
+target_link_libraries(${PROJECT_NAME} ${GoogleTest_LIBRARIES} GTestStaticRunner)

@@ -18,6 +18,7 @@
 #include "IWebsocketService.h"
 #include "IWebsocketClientService.h"
 #include "ILaunchService.h"
+#include "GTestStaticRunner.h"
 
 #include "Trace.h"
 #include <chrono>
@@ -203,15 +204,13 @@ namespace shape {
     {}
 
   public:
+    GTestStaticRunner m_gtest;
     ILaunchService* m_iLaunchService = nullptr;
 
-    std::string m_instanceName;
     std::map<IWebsocketClientService*, std::shared_ptr<ClientEventHandler>> m_iWebsocketClientServices;
     std::map<IWebsocketService*, std::shared_ptr<ServerEventHandler>> m_iWebsocketServices;
     std::mutex m_iWebsocketServicesMux;
     std::mutex m_iWebsocketClientServicesMux;
-
-    std::thread m_thread;
 
     static Imp& get() {
       static Imp imp;
@@ -230,12 +229,7 @@ namespace shape {
         "******************************"
       );
 
-      //std::cout << ">>> TestWebsocketService instance activate" << std::endl;
-
-      props->getMemberAsString("instance", m_instanceName);
-
-      //std::cout << ">>> Start thread" << std::endl;
-      m_thread = std::thread([this]() { this->runTread(); });
+      m_gtest.runAllTests(m_iLaunchService);
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -248,10 +242,6 @@ namespace shape {
         "TestWebsocketService instance deactivate" << std::endl <<
         "******************************"
       );
-
-      if(m_thread.joinable()) {
-        m_thread.join();
-      }
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -316,24 +306,57 @@ namespace shape {
       }
     }
 
+    class Args
+    {
+    public:
+      Args() = delete;
+      Args(const std::vector<std::string>& args)
+      {
+        m_argc = args.size();
+        if (m_argc > 0)
+        {
+          m_argv = shape_new char *[m_argc + 1];
+          int n = 0;
+          for (; n < m_argc; n++)
+          {
+            m_argv[n] = shape_new char[args[n].size() + 1];
+            strcpy(m_argv[n], args[n].c_str());
+          }
+          m_argv[n] = nullptr; //mast be ended with null
+        }
+      }
+      ~Args()
+      {
+        if (m_argc > 0)
+        {
+          int n = 0;
+          for (int n = 0; n <= m_argc; n++) //last null
+            delete[] m_argv[n];
+          delete[] m_argv;
+        }
+      }
+
+      int* argc() { return &m_argc; }
+      char ** argv() { return m_argv; }
+
+    private:
+      int m_argc = 0;
+      char** m_argv = nullptr;
+    };
+
     void runTread()
     {
       TRC_FUNCTION_ENTER("");
 
-      char  arg0[] = "app";
-      char* argv[] = { &arg0[0], NULL };
-      int   argc = (int)(sizeof(argv) / sizeof(argv[0])) - 1;
+      Args args(m_iLaunchService->getCommandLine());
 
-      ::testing::InitGoogleTest(&argc, (char**)&argv);
+      ::testing::InitGoogleTest(args.argc(), args.argv());
       int retval = RUN_ALL_TESTS();
-      //std::cout << std::endl << "RUN_ALL_TESTS" << PAR(retval) << std::endl;
 
       m_iLaunchService->exit(retval);
 
       TRC_FUNCTION_LEAVE("")
     }
-
-
   };
 
   /////////////////////////////////
