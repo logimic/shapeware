@@ -42,8 +42,11 @@ add_subdirectory(WebsocketService)
 add_subdirectory(WebsocketCppService)
 add_subdirectory(WebsocketCppClientService)
 add_subdirectory(MqMessageService)
+add_subdirectory(startup)
+
+if(${BUILD_TESTING})
 add_subdirectory(tests/TestWebsocketService)
 add_subdirectory(tests/TestCppRestService)
-add_subdirectory(startup)
+endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake @ONLY)
