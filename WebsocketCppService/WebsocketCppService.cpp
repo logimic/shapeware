@@ -206,7 +206,7 @@ namespace shape {
       websocketpp::lib::error_code ec;
       m_server.close(hdl, websocketpp::close::status::normal, data, ec); // send close message.
       if (ec) { // we got an error
-                // Error closing websocket. Log reason using ec.message().
+        TRC_WARNING("Error: " << PAR(connId) << " " << ec.message() );
       }
 
       TRC_FUNCTION_LEAVE("");
@@ -218,7 +218,7 @@ namespace shape {
       std::string connId;
       bool found = false;
       {
-        std::unique_lock<std::mutex> lock(m_mux);
+    	std::unique_lock<std::mutex> lock(m_mux);
         found = getConnId(hdl, connId);
         m_connectionsStrMap.erase(hdl);
       }
@@ -334,18 +334,29 @@ namespace shape {
           }
         }
 
-        // Close all existing websocket connections.
-        std::unique_lock<std::mutex> lock(m_mux);
+        // copy all existing websocket connections.
+        std::map<connection_hdl, std::string, std::owner_less<connection_hdl>> connectionsStrMap;
+        {
+          std::unique_lock<std::mutex> lock(m_mux);
+          connectionsStrMap = m_connectionsStrMap;
+        }
 
+        //now close unlocked - we have to avoid deadlock on_close()
         TRC_INFORMATION("close connections");
         std::string data = "Terminating connection...";
-        for (auto con : m_connectionsStrMap) {
+        for (auto con : connectionsStrMap) {
           websocketpp::lib::error_code ec;
           TRC_INFORMATION("close connection: " << con.second);
           m_server.close(con.first, websocketpp::close::status::normal, data, ec); // send text message.
           if (ec) { // we got an error
                     // Error closing websocket. Log reason using ec.message().
           }
+        }
+
+        // clear all existing websocket connections mapping.
+        {
+          std::unique_lock<std::mutex> lock(m_mux);
+          m_connectionsStrMap.clear();
         }
 
         // Stop the endpoint.
