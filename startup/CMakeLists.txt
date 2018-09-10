@@ -1,18 +1,22 @@
 project (startup)
 
+if(WIN32)
+  set(_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/configurationWin)
+else()
+  set(_CONFIG ${CMAKE_CURRENT_SOURCE_DIR}/configurationLin)
+endif()
+
 file(GLOB_RECURSE _HDRFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
 file(GLOB_RECURSE _SRCFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
-file(GLOB_RECURSE _CONFIG_WIN ${CMAKE_CURRENT_SOURCE_DIR}/configurationWin/*)
-file(GLOB_RECURSE _CONFIG_LIN ${CMAKE_CURRENT_SOURCE_DIR}/configurationLin/*)
+file(GLOB_RECURSE _SRCCONFIG ${_CONFIG}/* ${CMAKE_CURRENT_SOURCE_DIR}/configuration/*)
 
 source_group("Header Files" FILES ${_HDRFILES})
 source_group("Source Files" FILES ${_SRCFILES})
-source_group("ConfigurationWin" FILES ${_CONFIG_WIN})
-source_group("ConfigurationLin" FILES ${_CONFIG_LIN})
+source_group("Configuration" FILES ${_SRCCONFIG})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(${PROJECT_NAME} ${_HDRFILES} ${_SRCFILES}  ${_CONFIG_WIN} ${_CONFIG_LIN} )
+add_executable(${PROJECT_NAME} ${_HDRFILES} ${_SRCFILES} ${_SRCCONFIG} )
 
 target_link_libraries(${PROJECT_NAME} 
   launcher
@@ -38,26 +42,18 @@ else()
 endif()
 
 #copy configuration
+# do the copying
 add_custom_command(
     TARGET ${PROJECT_NAME}
     POST_BUILD
     COMMAND ${CMAKE_COMMAND}
-    ARGS -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/${_CONFIG_DIR} "${_CONFIG_DEST}/configuration"
+    ARGS -E copy_directory ${_CONFIG} "${CMAKE_CURRENT_BINARY_DIR}/configuration"
 )
 
-#copy schemes
-set(_JSON_SCHEMES_FROM ${CMAKE_SOURCE_DIR}/libraries/iqrf-daemon-api/JsonSchemes/async-api-json-schemes)
-set(_JSON_SCHEMES_TO ${_CONFIG_DEST}/configuration/JsonSchemes/async-api-json-schemes)
+# do the copying
 add_custom_command(
     TARGET ${PROJECT_NAME}
     POST_BUILD
     COMMAND ${CMAKE_COMMAND}
-    ARGS -E copy_directory ${_JSON_SCHEMES_FROM} ${_JSON_SCHEMES_TO}
-)
-
-add_custom_command(
-    TARGET ${PROJECT_NAME}
-    POST_BUILD
-    COMMAND ${CMAKE_COMMAND}
-    ARGS -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/${_CONFIG_DIR}/configuration "${_CONFIG_DEST}/configuration"
+    ARGS -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/configuration "${CMAKE_CURRENT_BINARY_DIR}/configuration"
 )

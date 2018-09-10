@@ -34,7 +34,6 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # external/libwebsockets
 add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
-# add_subdirectory(external/websocketpp)	
 
 add_subdirectory(include)
 add_subdirectory(CppRestService)
@@ -42,6 +41,8 @@ add_subdirectory(WebsocketService)
 add_subdirectory(WebsocketCppService)
 add_subdirectory(WebsocketCppClientService)
 add_subdirectory(MqMessageService)
+add_subdirectory(CommandService)
+add_subdirectory(CommandLineService)
 add_subdirectory(startup)
 
 if(${BUILD_TESTING})
