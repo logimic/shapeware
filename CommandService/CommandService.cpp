@@ -39,7 +39,7 @@ namespace shape {
     std::mutex m_mux;
     std::map<std::string, std::shared_ptr<ICommand>> m_commands;
     std::shared_ptr<ICommand> m_defaultCmd;
-    std::atomic_bool m_quitFlg = false;
+    std::atomic_bool m_quitFlg;
 
     //////////////////////
     class HelpCommand : public ICommand
@@ -109,6 +109,7 @@ namespace shape {
   ///////////////////////////////
   public:
     Imp()
+     :m_quitFlg(false)
     {
     }
 
