@@ -29,46 +29,18 @@
       "startlevel": -2
     },
     {
-      "name": "shape::WebsocketService",
+      "name": "shape::CommandService",
       "libraryPath": ".",
-      "libraryName": "WebsocketService",
-      "enabled": false,
-      "startlevel": 1
-    },
-    {
-      "name": "shape::WebsocketCppService",
-      "libraryPath": ".",
-      "libraryName": "WebsocketCppService",
+      "libraryName": "CommandService",
       "enabled": true,
-      "startlevel": 1
-    },
-    {
-      "name": "shape::WebsocketCppClientService",
-      "libraryPath": ".",
-      "libraryName": "WebsocketCppClientService",
-      "enabled": true,
-      "startlevel": 1
-    },
-    {
-      "name": "shape::CppRestService",
-      "libraryPath": ".",
-      "libraryName": "CppRestService",
-      "enabled": false,
       "startlevel": 0
     },
     {
-      "name": "shape::TestWebsocketService",
+      "name": "shape::CommandLineService",
       "libraryPath": ".",
-      "libraryName": "TestWebsocketService",
+      "libraryName": "CommandLineService",
       "enabled": true,
-      "startlevel": 2
-    },
-    {
-      "name": "shape::TestCppRestService",
-      "libraryPath": ".",
-      "libraryName": "TestCppRestService",
-      "enabled": false,
-      "startlevel": 2
+      "startlevel": 1
     }
   ]
 }
