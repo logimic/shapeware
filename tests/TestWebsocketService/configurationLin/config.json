@@ -2,21 +2,21 @@
   "applicationName": "startup",
   "resourceDir": "",
   "dataDir": "",
-  "cacheDir": "cache",
+  "cacheDir": "",
   "userDir": "",
   "configurationDir": "configuration",
-  "deploymentDir": "../../../../shape/build/Unix_Makefiles/bin",
+  "deploymentDir": "../../bin",
   "components": [
     {
       "name": "shape::TraceFormatService",
-      "libraryPath": "",
+      "libraryPath": "../../../../../shape/build/Unix_Makefiles/bin",
       "libraryName": "TraceFormatService",
       "enabled": true,
       "startlevel": -4
     },
     {
       "name": "shape::TraceFileService",
-      "libraryPath": "",
+      "libraryPath": "../../../../../shape/build/Unix_Makefiles/bin",
       "libraryName": "TraceFileService",
       "enabled": true,
       "startlevel": -3
@@ -29,45 +29,24 @@
       "startlevel": -2
     },
     {
-      "name": "shape::WebsocketService",
-      "libraryPath": ".",
-      "libraryName": "WebsocketService",
-      "enabled": false,
-      "startlevel": 1
-    },
-    {
       "name": "shape::WebsocketCppService",
-      "libraryPath": ".",
+      "libraryPath": "",
       "libraryName": "WebsocketCppService",
       "enabled": true,
       "startlevel": 1
     },
     {
       "name": "shape::WebsocketCppClientService",
-      "libraryPath": ".",
+      "libraryPath": "",
       "libraryName": "WebsocketCppClientService",
       "enabled": true,
       "startlevel": 1
     },
     {
-      "name": "shape::CppRestService",
-      "libraryPath": ".",
-      "libraryName": "CppRestService",
-      "enabled": false,
-      "startlevel": 0
-    },
-    {
       "name": "shape::TestWebsocketService",
-      "libraryPath": ".",
+      "libraryPath": "",
       "libraryName": "TestWebsocketService",
       "enabled": true,
-      "startlevel": 2
-    },
-    {
-      "name": "shape::TestCppRestService",
-      "libraryPath": ".",
-      "libraryName": "TestCppRestService",
-      "enabled": false,
       "startlevel": 2
     }
   ]
