@@ -30,7 +30,8 @@ namespace shape {
   class ICommand
   {
   public:
-    virtual std::string doCmd(std::istringstream & params) = 0;
+    virtual std::string doCmd(const std::string& params) = 0;
+    //brief description up to 64 chars - provide long description and examples as 'h' subcommand
     virtual std::string getHelp() = 0;
     virtual ~ICommand() {}
   };
@@ -42,6 +43,7 @@ namespace shape {
     virtual void removeCommand(const std::string & cmdStr) = 0;
     virtual std::shared_ptr<ICommand> findCommand(const std::string & cmdStr) = 0;
     virtual std::shared_ptr<ICommand> getDefaultCommand() = 0;
+    virtual bool isQuiting() const = 0;
     virtual ~ICommandService() {}
   };
 }

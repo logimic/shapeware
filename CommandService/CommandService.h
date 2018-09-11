@@ -34,6 +34,7 @@ namespace shape {
     void removeCommand(const std::string & cmdStr) override;
     std::shared_ptr<ICommand> findCommand(const std::string & cmdStr) override;
     std::shared_ptr<ICommand> getDefaultCommand() override;
+    bool isQuiting() const override;
 
     void activate(const shape::Properties *props = 0);
     void deactivate();

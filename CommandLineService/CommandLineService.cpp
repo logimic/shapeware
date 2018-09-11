@@ -75,9 +75,11 @@ namespace shape {
         "******************************"
       );
 
+      //std::cout << "joining CommandLineService thd ... ";
       if (m_thd.joinable()) {
         m_thd.join();
       }
+      //std::cout << "done" << std::endl;
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -103,6 +105,10 @@ namespace shape {
       std::string cmdLine;
       while (m_runThdFlg) {
 
+        if (m_iCommandService->isQuiting()) {
+          break;
+        }
+
         std::cout << "cmd> ";
 
         std::getline(std::cin, cmdLine);
@@ -120,7 +126,7 @@ namespace shape {
         auto cmdPtr = m_iCommandService->findCommand(cmdStr);
         if (cmdPtr) {
           try {
-            std::cout << cmdPtr->doCmd(istr) << std::endl;
+            std::cout << cmdPtr->doCmd(istr.str()) << std::endl;
           }
           catch (std::exception &e) {
             CATCH_EXC_TRC_WAR(std::exception, e, "Command failure: " << PAR(cmdStr));
@@ -131,7 +137,7 @@ namespace shape {
           auto defaultCmd = m_iCommandService->getDefaultCommand();
           std::cout << "Unknown command: " << cmdStr << std::endl;
           if (defaultCmd) {
-            std::cout << defaultCmd->doCmd(istr) << std::endl;
+            std::cout << defaultCmd->doCmd(istr.str()) << std::endl;
           }
         }
       }

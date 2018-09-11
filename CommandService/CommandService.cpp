@@ -19,6 +19,8 @@
 #include "CommandService.h"
 #include "Trace.h"
 #include <map>
+#include <signal.h>
+#include <atomic>
 
 #include "shape__CommandService.hxx"
 
@@ -30,13 +32,16 @@
 TRC_INIT_MODULE(shape::CommandService);
 
 namespace shape {
+
   class CommandService::Imp
   {
   private:
     std::mutex m_mux;
     std::map<std::string, std::shared_ptr<ICommand>> m_commands;
     std::shared_ptr<ICommand> m_defaultCmd;
+    std::atomic_bool m_quitFlg = false;
 
+    //////////////////////
     class HelpCommand : public ICommand
     {
     public:
@@ -46,13 +51,13 @@ namespace shape {
       {
       }
 
-      std::string doCmd(std::istringstream & params) override
+      std::string doCmd(const std::string& params) override
       {
         TRC_FUNCTION_ENTER("");
         auto commands = m_imp->getCommands();
         std::ostringstream os;
         for (auto cmd : commands) {
-          os << cmd.second->getHelp() << std::endl;
+          os << std::left << std::setw(10) << cmd.first << cmd.second->getHelp() << std::endl;
         }
         TRC_FUNCTION_LEAVE("");
         return os.str();
@@ -60,7 +65,7 @@ namespace shape {
 
       std::string getHelp() override
       {
-        return "h for help";
+        return "for help";
       }
 
       ~HelpCommand() {}
@@ -68,11 +73,43 @@ namespace shape {
       CommandService::Imp* m_imp = nullptr;
     };
 
+    //////////////////////
+    class QuitCommand : public ICommand
+    {
+    public:
+      QuitCommand(CommandService::Imp* imp)
+        :m_imp(imp)
+      {
+      }
+
+      std::string doCmd(const std::string& params) override
+      {
+        TRC_FUNCTION_ENTER("");
+
+        std::string retval = "quit command invoked";
+        
+        m_imp->setQuit();
+        raise(SIGINT);
+
+        TRC_FUNCTION_LEAVE("");
+        return retval;
+      }
+
+      std::string getHelp() override
+      {
+        return "for quit";
+      }
+
+      ~QuitCommand() {}
+    private:
+      CommandService::Imp* m_imp = nullptr;
+    };
+
+
+  ///////////////////////////////
   public:
     Imp()
     {
-      m_defaultCmd = std::shared_ptr<ICommand>(shape_new HelpCommand(this));
-      addCommand("h", m_defaultCmd);
     }
 
     ~Imp()
@@ -85,6 +122,11 @@ namespace shape {
       return m_commands;
     }
     
+    void setQuit()
+    {
+      m_quitFlg = true;
+    }
+
     void addCommand(const std::string & cmdStr, std::shared_ptr<ICommand> cmd)
     {
       TRC_FUNCTION_ENTER(PAR(cmdStr));
@@ -130,6 +172,11 @@ namespace shape {
       return m_defaultCmd;
     }
 
+    bool isQuiting() const
+    {
+      return m_quitFlg;
+    }
+
     void activate(const shape::Properties *props)
     {
       TRC_FUNCTION_ENTER("");
@@ -138,6 +185,10 @@ namespace shape {
         "CommandService instance activate" << std::endl <<
         "******************************"
       );
+
+      m_defaultCmd = std::shared_ptr<ICommand>(shape_new HelpCommand(this));
+      addCommand("h", m_defaultCmd);
+      addCommand("q", std::shared_ptr<ICommand>(shape_new QuitCommand(this)));
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -185,6 +236,11 @@ namespace shape {
   std::shared_ptr<ICommand> CommandService::getDefaultCommand()
   {
     return m_imp->getDefaultCommand();
+  }
+
+  bool CommandService::isQuiting() const
+  {
+    return m_imp->isQuiting();
   }
 
   void CommandService::activate(const shape::Properties *props)
