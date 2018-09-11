@@ -30,14 +30,14 @@
     },
     {
       "name": "shape::CommandService",
-      "libraryPath": ".",
+      "libraryPath": "",
       "libraryName": "CommandService",
       "enabled": true,
       "startlevel": 0
     },
     {
       "name": "shape::CommandLineService",
-      "libraryPath": ".",
+      "libraryPath": "",
       "libraryName": "CommandLineService",
       "enabled": true,
       "startlevel": 1

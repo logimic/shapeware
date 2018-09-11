@@ -5,18 +5,18 @@
   "cacheDir": "cache",
   "userDir": "",
   "configurationDir": "configuration",
-  "deploymentDir": "../../../../shape/build/VS14_2015_x64/bin/Debug",
+  "deploymentDir": "../bin/Debug",
   "components": [
     {
       "name": "shape::TraceFormatService",
-      "libraryPath": "",
+      "libraryPath": "../../../../shape/build/VS14_2015_x64/bin/Debug",
       "libraryName": "TraceFormatService",
       "enabled": true,
       "startlevel": -4
     },
     {
       "name": "shape::TraceFileService",
-      "libraryPath": "",
+      "libraryPath": "../../../../shape/build/VS14_2015_x64/bin/Debug",
       "libraryName": "TraceFileService",
       "enabled": true,
       "startlevel": -3
@@ -30,14 +30,14 @@
     },
     {
       "name": "shape::CommandService",
-      "libraryPath": ".",
+      "libraryPath": "",
       "libraryName": "CommandService",
       "enabled": true,
       "startlevel": 0
     },
     {
       "name": "shape::CommandLineService",
-      "libraryPath": ".",
+      "libraryPath": "",
       "libraryName": "CommandLineService",
       "enabled": true,
       "startlevel": 1
