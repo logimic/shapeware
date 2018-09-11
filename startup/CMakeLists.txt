@@ -22,23 +22,11 @@ target_link_libraries(${PROJECT_NAME}
   launcher
 )
 
-if(WIN32)
-  set (_CONFIG_DEST ${CMAKE_CURRENT_BINARY_DIR})
-  set (_CONFIG_DIR configurationWin)
-else()
-  set (_CONFIG_DIR configurationLin)
+if(UNIX)
   target_link_libraries(${PROJECT_NAME} 
     dl
     pthread
   )
-
-  set (_CONFIG_DEST $<TARGET_FILE_DIR:${PROJECT_NAME}>)
-
-  INSTALL(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-  )
-
 endif()
 
 #copy configuration
