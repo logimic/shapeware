@@ -279,13 +279,13 @@ namespace shape {
       TRC_DEBUG("joining Mq listening thread");
       m_runListenThread = false;
 #ifndef SHAPE_PLATFORM_WINDOWS
-      //seem the only way to stop the thread here
+      //seems the only way to stop the thread here
       pthread_cancel(m_listenThread.native_handle());
       closeMq(m_remoteMqHandle);
       closeMq(m_localMqHandle);
 #else
-      // Open write channel to client just to unblock ConnectNamedPipe() if listener waits there
-      MQDESCR mqHandle = openMqWrite(m_localMqName, m_bufsize);
+      //seems the only way to stop the thread here
+      TerminateThread(m_listenThread.native_handle(), 0);
       closeMq(m_remoteMqHandle);
       closeMq(m_localMqHandle);
 #endif
