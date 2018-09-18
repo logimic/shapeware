@@ -1,0 +1,6 @@
+add_subdirectory(include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+add_subdirectory(TestWebsocketService)
+add_subdirectory(TestCppRestService)
+add_subdirectory(TestSimulationIRestApiService)

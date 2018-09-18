@@ -46,8 +46,7 @@ add_subdirectory(CommandLineService)
 add_subdirectory(startup)
 
 if(${BUILD_TESTING})
-add_subdirectory(tests/TestWebsocketService)
-add_subdirectory(tests/TestCppRestService)
+  add_subdirectory(tests)
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake @ONLY)
