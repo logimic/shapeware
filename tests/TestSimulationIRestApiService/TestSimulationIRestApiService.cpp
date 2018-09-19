@@ -6,15 +6,15 @@
 
 #include "rapidjson/pointer.h"
 
+#include <mutex>
 #include <queue>
 #include <condition_variable>
 #include <fstream>
+#include <algorithm>
 
 #include "shape__TestSimulationIRestApiService.hxx"
 
 TRC_INIT_MNAME(shape::TestSimulationIRestApiService)
-
-using namespace std;
 
 namespace shape {
 
@@ -27,7 +27,9 @@ namespace shape {
     public:
       void parse(const std::string& url_s)
       {
-        const string prot_end("://");
+        using namespace std;
+
+        const std::string prot_end("://");
         string::const_iterator prot_i = search(url_s.begin(), url_s.end(),
           prot_end.begin(), prot_end.end());
         protocol_.reserve(distance(url_s.begin(), prot_i));
@@ -37,7 +39,8 @@ namespace shape {
         if (prot_i == url_s.end())
           return;
         advance(prot_i, prot_end.length());
-        string::const_iterator path_i = find(prot_i, url_s.end(), '/');
+        const char separ = '/';
+        string::const_iterator path_i = find(prot_i, url_s.end(), separ);
         host_.reserve(distance(prot_i, path_i));
         transform(prot_i, path_i,
           back_inserter(host_),

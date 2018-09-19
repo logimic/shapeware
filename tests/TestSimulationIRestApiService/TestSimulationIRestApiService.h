@@ -8,7 +8,7 @@
 
 namespace shape {
 
-  class TestSimulationIRestApiService : public IRestApiService, public ITestSimulationIRestApiService
+  class TestSimulationIRestApiService : public ITestSimulationIRestApiService
   {
   public:
     TestSimulationIRestApiService();

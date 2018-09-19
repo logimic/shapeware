@@ -19,7 +19,7 @@ popd
 
 #launch cmake to generate build environment
 pushd ${builddir}
-cmake -G "Eclipse CDT4 - Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DLWS_STATIC_PIC:BOOL=true -Dshape_DIR:PATH=${shape} ${currentdir} 
+cmake -G "Eclipse CDT4 - Unix Makefiles" -DBUILD_TESTING:BOOL=true -DCMAKE_BUILD_TYPE=Debug -DLWS_STATIC_PIC:BOOL=true -Dshape_DIR:PATH=${shape} ${currentdir} 
 popd
 
 #build from generated build environment
