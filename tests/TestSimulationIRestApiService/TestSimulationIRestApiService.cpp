@@ -82,15 +82,16 @@ namespace shape {
       TRC_DEBUG(PAR(url.protocol_) << PAR(url.host_) << PAR(url.path_) << PAR(url.query_) << PAR(url.m_fname));
 
       std::ostringstream os;
-      os << "./configuration/testResources/" << m_resourceDir << '/' << url.path_ << '/' << "data.json";
+      os << "./configuration/testResources/" << m_resourceDir << url.path_ << '/' << "data.json";
       std::string from = os.str();
       
       TRC_DEBUG(PAR(from));
 
       std::ifstream  src(from, std::ios::binary);
       std::ofstream  dst(fname, std::ios::binary);
-
       dst << src.rdbuf();
+      src.close();
+      dst.close();
 
       std::unique_lock<std::mutex> lck(m_queueMux);
       m_incomingRequestQueue.push(url);
