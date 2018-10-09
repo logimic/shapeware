@@ -411,7 +411,7 @@ namespace shape {
 
     void sendTo(const std::vector<uint8_t>& message)
     {
-      TRC_INFORMATION("Send to MQ: " << std::endl << MEM_HEX(message.data(), message.size()));
+      TRC_INFORMATION("Send to MQ: " << std::endl << MEM_HEX_CHAR(message.data(), message.size()));
 
       unsigned long toWrite = message.size();
       unsigned long written = 0;
