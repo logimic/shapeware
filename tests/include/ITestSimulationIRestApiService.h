@@ -32,6 +32,7 @@ namespace shape {
   {
   public:
     virtual std::string popIncomingRequest(unsigned millisToWait) = 0;
+    virtual void clearIncomingRequest() = 0;
     virtual void setResourceDirectory(const std::string& dir) = 0;
     virtual ~ITestSimulationIRestApiService() {};
   };

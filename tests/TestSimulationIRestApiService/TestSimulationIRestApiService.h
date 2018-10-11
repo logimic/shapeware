@@ -17,6 +17,7 @@ namespace shape {
     void getFile(const std::string & url, const std::string& fname) override;
 
     std::string popIncomingRequest(unsigned millisToWait) override;
+    void clearIncomingRequest() override;
     void setResourceDirectory(const std::string& dir) override;
 
     void activate(const shape::Properties *props = 0);

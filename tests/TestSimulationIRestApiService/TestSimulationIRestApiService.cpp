@@ -122,6 +122,14 @@ namespace shape {
       return retval;
     }
 
+    void clearIncomingRequest()
+    {
+      TRC_FUNCTION_ENTER("");
+      std::unique_lock<std::mutex> lck(m_queueMux);
+      m_incomingRequestQueue.swap(std::queue<Url>());
+      TRC_FUNCTION_LEAVE("");
+    }
+
     void setResourceDirectory(const std::string& dir)
     {
       TRC_FUNCTION_ENTER(PAR(dir));
@@ -175,6 +183,11 @@ namespace shape {
   std::string TestSimulationIRestApiService::popIncomingRequest(unsigned millisToWait)
   {
     return m_imp->popIncomingRequest(millisToWait);
+  }
+
+  void TestSimulationIRestApiService::clearIncomingRequest()
+  {
+    m_imp->clearIncomingRequest();
   }
 
   void TestSimulationIRestApiService::setResourceDirectory(const std::string& dir)
