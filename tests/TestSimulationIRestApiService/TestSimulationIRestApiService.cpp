@@ -126,7 +126,8 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER("");
       std::unique_lock<std::mutex> lck(m_queueMux);
-      m_incomingRequestQueue.swap(std::queue<Url>());
+      std::queue<Url> q;
+      m_incomingRequestQueue.swap(q);
       TRC_FUNCTION_LEAVE("");
     }
 
