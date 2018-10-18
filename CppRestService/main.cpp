@@ -15,7 +15,7 @@ using namespace web::http;                  // Common HTTP functionality
 using namespace web::http::client;          // HTTP client features
 using namespace concurrency::streams;       // Asynchronous streams
 
-int main(int argc, char* argv[])
+int main1(int argc, char* argv[])
 {
   auto fileStream = std::make_shared<ostream>();
 
@@ -25,15 +25,12 @@ int main(int argc, char* argv[])
     *fileStream = outFile;
 
     // Create http_client to send the request.
-    //http_client client(U("https://repository.iqrfalliance.org/api/server/"));
-    std::wstring url = U("https://www.bing.com/");
-    http_client client(url);
+    http_client client(U("https://www.bing.com/"));
 
     // Build request URI and start the request.
     //uri_builder builder(U("/search"));
     //builder.append_query(U("q"), U("cpprestsdk github"));
     //return client.request(methods::GET, builder.to_string());
-    printf("Getting: %ws\n", url.c_str());
     return client.request(methods::GET);
   })
 
