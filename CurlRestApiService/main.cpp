@@ -26,7 +26,11 @@
 #include <stdio.h>
 #include <curl/curl.h>
 
-int main(void)
+static size_t writeCallback(void *contents, size_t size, size_t nitems, FILE *file) {
+  return fwrite(contents, size, nitems, file);
+}
+
+int testMain(void)
 {
   CURL *curl;
   CURLcode res;
@@ -34,8 +38,22 @@ int main(void)
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
   curl = curl_easy_init();
+  
   if (curl) {
     curl_easy_setopt(curl, CURLOPT_URL, "https://repository.iqrfalliance.org/api/server/");
+
+    FILE* file = fopen("result.html", "w");
+    if (!file) {
+      fprintf(stderr, "Could not open output file.\n");
+      return 1;
+    }
+    
+    // if redirected, follow redirection
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    // When data arrives, curl will call writeCallback.
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
+    // The last argument to writeCallback will be our file:
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)file);
 
 #define SKIP_PEER_VERIFICATION
 #ifdef SKIP_PEER_VERIFICATION
@@ -62,88 +80,19 @@ int main(void)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 #endif
 
-    /* Perform the request, res will get the return code */
+    // Perform the request, res will get the return code
     res = curl_easy_perform(curl);
-    /* Check for errors */
+    // Check for errors
     if (res != CURLE_OK)
-      fprintf(stderr, "curl_easy_perform() failed: %s\n",
-        curl_easy_strerror(res));
+      fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 
-    /* always cleanup */
+    // always cleanup
     curl_easy_cleanup(curl);
+
+    fclose(file);
   }
 
   curl_global_cleanup();
 
   return 0;
 }
-
-
-#if 0
-#include <cpprest/http_client.h>
-#include <cpprest/filestream.h>
-#include <cpprest/http_listener.h>              // HTTP WsServer
-#include <cpprest/json.h>                       // JSON library
-#include <cpprest/uri.h>                        // URI library
-#include <cpprest/ws_client.h>                  // WebSocket client
-#include <cpprest/containerstream.h>            // Async streams backed by STL containers
-#include <cpprest/interopstream.h>              // Bridges for integrating Async streams with STL and WinRT streams
-#include <cpprest/rawptrstream.h>               // Async streams backed by raw pointer to memory
-#include <cpprest/producerconsumerstream.h>     // Async streams for producer consumer scenarios
-
-using namespace utility;                    // Common utilities like string conversions
-using namespace web;                        // Common features like URIs.
-using namespace web::http;                  // Common HTTP functionality
-using namespace web::http::client;          // HTTP client features
-using namespace concurrency::streams;       // Asynchronous streams
-
-int main(int argc, char* argv[])
-{
-  auto fileStream = std::make_shared<ostream>();
-
-  // Open stream to output file.
-  pplx::task<void> requestTask = fstream::open_ostream(U("results.html")).then([=](ostream outFile)
-  {
-    *fileStream = outFile;
-
-    // Create http_client to send the request.
-    //http_client client(U("https://repository.iqrfalliance.org/api/server/"));
-    auto url = U("https://www.bing.com/");
-    http_client client(url);
-
-    // Build request URI and start the request.
-    //uri_builder builder(U("/search"));
-    //builder.append_query(U("q"), U("cpprestsdk github"));
-    //return client.request(methods::GET, builder.to_string());
-    printf("Getting: %ws\n", url);
-    return client.request(methods::GET);
-  })
-
-    // Handle response headers arriving.
-    .then([=](http_response response)
-  {
-    printf("Received response status code:%u\n", response.status_code());
-
-    // Write response body into the file.
-    return response.body().read_to_end(fileStream->streambuf());
-  })
-
-    // Close the file stream.
-    .then([=](size_t)
-  {
-    return fileStream->close();
-  });
-
-  // Wait for all the outstanding I/O to complete and handle any exceptions
-  try
-  {
-    requestTask.wait();
-  }
-  catch (const std::exception &e)
-  {
-    printf("Error exception:%s\n", e.what());
-  }
-
-  return 0;
-}
-#endif

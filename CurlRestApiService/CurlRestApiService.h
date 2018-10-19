@@ -23,11 +23,11 @@
 #include <functional>
 
 namespace shape {
-  class CppRestService : public IRestApiService
+  class CurlRestApiService : public IRestApiService
   {
   public:
-    CppRestService();
-    virtual ~CppRestService();
+    CurlRestApiService();
+    virtual ~CurlRestApiService();
     void getFile(const std::string & url, const std::string& fname) override;
 
     void activate(const shape::Properties *props = 0);
