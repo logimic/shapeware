@@ -37,6 +37,7 @@ add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)
 
 add_subdirectory(include)
 add_subdirectory(CppRestService)
+add_subdirectory(CurlRestApiService)
 add_subdirectory(WebsocketService)
 add_subdirectory(WebsocketCppService)
 add_subdirectory(WebsocketCppClientService)
