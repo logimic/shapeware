@@ -19,6 +19,8 @@
 #include "IMessageService.h"
 #include "ILaunchService.h"
 #include "Trace.h"
+#include <fstream>
+#include <iostream>
 
 #include "shape__MsgCmd.hxx"
 
@@ -30,7 +32,7 @@
 TRC_INIT_MODULE(shape::MsgCmd);
 
 namespace shape {
-  class MsgCmd::Imp : public ICommand, public std::enable_shared_from_this<ICommand>
+  class MsgCmd::Imp
   {
   private:
     ILaunchService* m_iLaunchService = nullptr;
@@ -44,104 +46,96 @@ namespace shape {
     virtual ~Imp()
     {}
 
-    void usage(std::ostringstream& ostr)
-    {
-      ostr <<
-        std::left << std::setw(15) << "c h" << "show help" << std::endl <<
-        //std::left << std::setw(15) << "fr m <age>" << "add male face" << std::endl <<
-        //std::left << std::setw(15) << "fr f <age>" << "add female face" << std::endl <<
-        //std::left << std::setw(15) << "fr c" << "remove all faces" << std::endl <<
-        //std::left << std::setw(15) << "fr l" << "list all faces" << std::endl <<
-        //std::left << std::setw(15) << "fr r <label>" << "remove face with <label> or the last if <label> not provided" <<
-        std::endl;
-    }
+    friend class Cmd;
+    
+    class Cmd : public ICommand {
+    private:
+      MsgCmd::Imp* m_msgCmd = nullptr;
 
-    std::string doCmd(const std::string& params) override
-    {
-      TRC_FUNCTION_ENTER("");
+    public:
+      Cmd() = delete;
+      Cmd(MsgCmd::Imp* msgCmd)
+        :m_msgCmd(msgCmd) 
+      {}
 
-      std::string cmd;
-      std::string subcmd;
-      std::istringstream istr(params);
-      std::ostringstream ostr;
+      ~Cmd() {}
 
-      istr >> cmd >> subcmd;
-
-      TRC_DEBUG("process: " << PAR(subcmd));
-
-      if (subcmd == "h") {
-        usage(ostr);
-      }
-      //else if (subcmd == "m" || subcmd == "f") {
-      //  bool male = subcmd == "m";
-      //  auto & faces = m_imp->getFaces();
-      //  if (faces.size() < 16) {
-      //    int age = -1;
-      //    istr >> age;
-
-      //    Face face;
-      //    face.age = age > 0 ? age : 40;
-      //    face.maleProb = male ? 0.9 : 0.1;
-
-      //    int label = m_imp->addFace(face);
-      //    ostr << "added: " << face;
-      //  }
-      //  else {
-      //    ostr << "maximum faces: 16";
-      //  }
-      //}
-      //else if (subcmd == "c") {
-      //  auto & faces = m_imp->getFaces();
-      //  size_t sz = faces.size();
-      //  m_imp->remFaceAll();
-      //  ostr << sz << " faces removed";
-      //}
-      //else if (subcmd == "l") {
-      //  auto & faces = m_imp->getFaces();
-      //  ostr << "faces: " << faces.size() << std::endl;
-      //  for (auto face : faces) {
-      //    ostr << face.second << std::endl;
-      //  }
-      //}
-      //else if (subcmd == "r") {
-      //  int label = -1;
-      //  istr >> label;
-
-      //  auto & faces = m_imp->getFaces();
-
-      //  if (faces.size() > 0) {
-      //    if (label <= 0) {
-      //      auto rit = faces.rbegin();
-      //      label = rit->first;
-      //    }
-      //    auto it = faces.find(label);
-      //    if (it != faces.end()) {
-      //      Face face = it->second;
-      //      m_imp->remFace(it->first);
-      //      ostr << "removed: " << face;
-      //    }
-      //    else {
-      //      ostr << "label: " << label << " doesn't exist";
-      //    }
-      //  }
-      //  else {
-      //    ostr << "nothing to remove";
-      //  }
-      //}
-      else {
-        ostr << "usage: " << std::endl;
-        usage(ostr);
+      void usage(std::ostringstream& ostr)
+      {
+        ostr <<
+          std::left << std::setw(15) << "c h" << "show help" << std::endl <<
+          std::left << std::setw(15) << "c f file" << "send content of file" << std::endl <<
+          std::left << std::setw(15) << "c t \"text\"" << "send text" << std::endl <<
+          std::endl;
       }
 
+      std::string doCmd(const std::string& params) override
+      {
+        TRC_FUNCTION_ENTER("");
 
-      TRC_FUNCTION_LEAVE("");
-      return ostr.str();
-    }
+        std::string cmd;
+        std::string subcmd;
+        std::istringstream istr(params);
+        std::ostringstream ostr;
 
-    std::string getHelp() override
-    {
-      return "to communicate with msg. Type cmd h for help";
-    }
+        istr >> cmd >> subcmd;
+
+        TRC_DEBUG("process: " << PAR(subcmd));
+
+        ///////////////////
+        if (subcmd == "h") {
+          usage(ostr);
+        }
+        ///////////////////
+        else if (subcmd == "f") {
+          std::string fname;
+          istr >> fname;
+
+          std::ifstream file(fname);
+          if (file.is_open()) {
+            std::ostringstream strStream;
+            strStream << file.rdbuf();
+            std::string fileContent = strStream.str();
+            
+            if (!fileContent.empty()) {
+              m_msgCmd->m_iMessageService->sendMessage(std::vector<uint8_t>((uint8_t*)fileContent.data(), (uint8_t*)fileContent.data() + fileContent.size()));
+            }
+            else {
+              ostr << "Empty file: " << PAR(fname);
+            }
+          }
+          else {
+            ostr << "Cannot open: " << PAR(fname);
+          }
+        }
+        ///////////////////
+        else if (subcmd == "t") {
+          std::string text;
+          istr >> text;
+
+          if (!text.empty()) {
+            m_msgCmd->m_iMessageService->sendMessage(std::vector<uint8_t>((uint8_t*)text.data(), (uint8_t*)text.data() + text.size()));
+          }
+          else {
+            ostr << "Add text to send";
+          }
+
+        }
+        ///////////////////
+        else {
+          ostr << "usage: " << std::endl;
+          usage(ostr);
+        }
+
+        TRC_FUNCTION_LEAVE("");
+        return ostr.str();
+      }
+
+      std::string getHelp() override
+      {
+        return "to communicate with msg. Type cmd h for help";
+      }
+    };
 
     void activate(const Properties *props)
     {
@@ -152,8 +146,15 @@ namespace shape {
         "******************************"
       );
 
-      auto ptr = shared_from_this();
-      m_iCommandService->addCommand("c", ptr);
+      m_iCommandService->addCommand("c", std::shared_ptr<Cmd>(shape_new Cmd(this)));
+
+      m_iMessageService->registerMessageHandler([&](const std::vector<uint8_t>& msg)
+      {
+        //output received msg
+        std::cout << "received: " << std::endl <<
+          std::string((char*)msg.data(), msg.size()) <<
+          std::endl;
+      });
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -168,6 +169,7 @@ namespace shape {
       );
 
       m_iCommandService->removeCommand("c");
+      m_iMessageService->unregisterMessageHandler();
 
       TRC_FUNCTION_LEAVE("")
     }
