@@ -3,7 +3,7 @@ project(shapeware)
 cmake_minimum_required(VERSION 3.0)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
-
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -48,6 +48,10 @@ add_subdirectory(startup)
 
 if(${BUILD_TESTING})
   add_subdirectory(tests)
+endif()
+
+if(${BUILD_EXAMPLES})
+  add_subdirectory(examples)
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake @ONLY)
