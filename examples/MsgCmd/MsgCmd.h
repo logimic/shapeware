@@ -22,6 +22,7 @@ namespace shape {
   class ILaunchService;
   class ITraceService;
   class IMessageService;
+  class ICommandService;
 
   class MsgCmd
   {
@@ -32,6 +33,9 @@ namespace shape {
     void activate(const Properties *props = 0);
     void deactivate();
     void modify(const Properties *props);
+
+    void attachInterface(ICommandService* iface);
+    void detachInterface(ICommandService* iface);
 
     void attachInterface(IMessageService* iface);
     void detachInterface(IMessageService* iface);
