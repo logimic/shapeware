@@ -2,6 +2,7 @@ project(MsgCmd)
 
 set(COMPONENT shape::MsgCmd)
 DeclareShapeComponent(${COMPONENT})
+AddShapeRequiredInterface(${COMPONENT} shape::ICommandService MANDATORY MULTIPLE)
 AddShapeRequiredInterface(${COMPONENT} shape::IMessageService MANDATORY MULTIPLE)
 AddShapeRequiredInterface(${COMPONENT} shape::ILaunchService MANDATORY SINGLE)
 AddShapeRequiredInterface(${COMPONENT} shape::ITraceService MANDATORY MULTIPLE)
@@ -31,7 +32,6 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES} ${_SRCCONFIG})
 endif()
 
-message(STATUS "EXAMPLES_FOLDER: ${EXAMPLES_FOLDER}")
 set_target_properties (${PROJECT_NAME} PROPERTIES FOLDER ${EXAMPLES_FOLDER})
 
 # do the copying

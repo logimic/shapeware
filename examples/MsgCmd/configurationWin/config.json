@@ -29,23 +29,30 @@
       "startlevel": -2
     },
     {
-      "name": "shape::WebsocketCppService",
+      "name": "shape::CommandService",
       "libraryPath": "",
-      "libraryName": "WebsocketCppService",
+      "libraryName": "CommandService",
       "enabled": true,
       "startlevel": 1
     },
     {
-      "name": "shape::WebsocketCppClientService",
+      "name": "shape::CommandLineService",
       "libraryPath": "",
-      "libraryName": "WebsocketCppClientService",
+      "libraryName": "CommandLineService",
       "enabled": true,
       "startlevel": 1
     },
     {
-      "name": "shape::TestWebsocketService",
+      "name": "shape::MqMessageService",
       "libraryPath": "",
-      "libraryName": "TestWebsocketService",
+      "libraryName": "MqMessageService",
+      "enabled": true,
+      "startlevel": 1
+    },
+    {
+      "name": "shape::MsgCmd",
+      "libraryPath": "",
+      "libraryName": "MsgCmd",
       "enabled": true,
       "startlevel": 2
     }
