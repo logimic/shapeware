@@ -1,0 +1,6 @@
+{
+  "component": "shape::MqMessageService",
+  "instance": "MqMessageService-MsgCmdEcho",
+  "LocalMqName": "MsgCmdEcho",
+  "RemoteMqName": "MsgCmd"
+}

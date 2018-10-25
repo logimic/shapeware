@@ -55,6 +55,13 @@
       "libraryName": "MsgCmd",
       "enabled": true,
       "startlevel": 2
+    },
+    {
+      "name": "shape::MsgCmdEcho",
+      "libraryPath": "",
+      "libraryName": "MsgCmdEcho",
+      "enabled": true,
+      "startlevel": 2
     }
   ]
 }

@@ -1,11 +1,11 @@
 {
-  "component": "shape::MsgCmd",
-  "instance": "MsgCmd",
+  "component": "shape::MsgCmdEcho",
+  "instance": "MsgCmdEcho",
   "RequiredInterfaces": [
     {
       "name": "iqrf::IMessagingService",
       "target": {
-        "LocalMqName": "MsgCmd"
+        "LocalMqName": "MsgCmdEcho"
       }
     }
   ]
