@@ -3,7 +3,7 @@
   "instance": "MsgCmd",
   "RequiredInterfaces": [
     {
-      "name": "iqrf::IMessagingService",
+      "name": "shape::IMessageService",
       "target": {
         "LocalMqName": "MsgCmd"
       }
