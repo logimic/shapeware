@@ -46,3 +46,5 @@ cmd> received:
 q
 quit command invoked
 ```
+
+Note on Linux use of message queues (see http://man7.org/linux/man-pages/man0/mqueue.h.0p.html) need permissions to use it. To test this example use **sudo** to start up.
