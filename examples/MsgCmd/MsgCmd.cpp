@@ -133,7 +133,7 @@ namespace shape {
 
       std::string getHelp() override
       {
-        return "to communicate with msg. Type cmd h for help";
+        return "to communicate with msg. Type c h for help";
       }
     };
 
