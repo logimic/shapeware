@@ -1,4 +1,9 @@
 # MsgCmd example
+To build examples use:
+- buildWithExamples64.bat on Win
+- buildMakeWithExamples.sh on Lin
+- or `-DBUILD_EXAMPLES:BOOL=true in` `cmake -g ...` command
+
 This example demonstrates usage of MqMessageService component. MsgCmd and MsgCmdEcho instances are connected by two MqMessageServce instances providing duplex communication channel. It is demonstrated in scope of one process, but in fact both MsgCmd and MsgCmdEcho instances and their referenced MqMessageService instances can be separated to two processes as MqMessageService provides IPC.
 
 MsgCmd instance provides a simple command line. From the command line it is possible to send messages to MsgCmdEcho instance via MqMessageService instance. MsgCmdEcho repeats the message back
