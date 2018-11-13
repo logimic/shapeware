@@ -42,3 +42,5 @@ if(WIN32)
 else()
     target_link_libraries(${PROJECT_NAME} boost_system crypto ssl cpprest)
 endif()
+
+DeployShapeComponent(${PROJECT_SUBDIR} ${PROJECT_NAME} ${COMPONENT})

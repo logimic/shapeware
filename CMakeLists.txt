@@ -2,6 +2,8 @@ project(shapeware)
 
 cmake_minimum_required(VERSION 3.0)
 
+set(PROJECT_SUBDIR ${PROJECT_NAME})
+
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 

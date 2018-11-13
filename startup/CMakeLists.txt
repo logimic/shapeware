@@ -45,3 +45,5 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND}
     ARGS -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/configuration "${CMAKE_CURRENT_BINARY_DIR}/configuration"
 )
+
+DeployShapeTarget(${PROJECT_SUBDIR} ${PROJECT_NAME})
