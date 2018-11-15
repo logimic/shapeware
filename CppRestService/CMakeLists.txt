@@ -43,4 +43,11 @@ else()
     target_link_libraries(${PROJECT_NAME} boost_system crypto ssl cpprest)
 endif()
 
-DeployShapeComponent(${PROJECT_SUBDIR} ${PROJECT_NAME} ${COMPONENT})
+#DeployShapeComponent(${PROJECT_SUBDIR} ${PROJECT_NAME} ${COMPONENT})
+
+INSTALL(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION bin
+	ARCHIVE DESTINATION lib
+)
+

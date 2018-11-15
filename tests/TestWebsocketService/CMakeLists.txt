@@ -53,3 +53,15 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND}
     ARGS -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/configuration "${CMAKE_CURRENT_BINARY_DIR}/configuration"
 )
+
+install(TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION bin
+	ARCHIVE DESTINATION lib
+)
+
+install(
+    DIRECTORY
+    ${CMAKE_CURRENT_SOURCE_DIR}/configuration
+    DESTINATION configurations/tests/${PROJECT_NAME}
+)
