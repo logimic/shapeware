@@ -2,8 +2,6 @@ project(shapeware)
 
 cmake_minimum_required(VERSION 3.0)
 
-set(PROJECT_SUBDIR ${PROJECT_NAME})
-
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -25,6 +23,9 @@ if(NOT CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake|MSBuild)")
 endif()
 
 FIND_PACKAGE(shape REQUIRED)
+
+set(PROJECT_INSTALL_PREFIX ${PROJECT_NAME})
+set(CMAKE_INSTALL_PREFIX ${shape_DEPLOY})
 
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 include(${CMAKE_MODULE_PATH}/ShapeComponentDeclaration.cmake)

@@ -5,18 +5,18 @@
   "cacheDir": "",
   "userDir": "",
   "configurationDir": "configuration",
-  "deploymentDir": "../../bin/Debug",
+  "deploymentDir": "../../..",
   "components": [
     {
       "name": "shape::TraceFormatService",
-      "libraryPath": "../../../../../shape/build/VS14_2015_x64/bin/Debug",
+      "libraryPath": "shape/bin",
       "libraryName": "TraceFormatService",
       "enabled": true,
       "startlevel": -4
     },
     {
       "name": "shape::TraceFileService",
-      "libraryPath": "../../../../../shape/build/VS14_2015_x64/bin/Debug",
+      "libraryPath": "shape/bin",
       "libraryName": "TraceFileService",
       "enabled": true,
       "startlevel": -3
@@ -30,21 +30,21 @@
     },
     {
       "name": "shape::WebsocketCppService",
-      "libraryPath": "",
+      "libraryPath": "shapeware/bin",
       "libraryName": "WebsocketCppService",
       "enabled": true,
       "startlevel": 1
     },
     {
       "name": "shape::WebsocketCppClientService",
-      "libraryPath": "",
+      "libraryPath": "shapeware/bin",
       "libraryName": "WebsocketCppClientService",
       "enabled": true,
       "startlevel": 1
     },
     {
       "name": "shape::TestWebsocketService",
-      "libraryPath": "",
+      "libraryPath": "shapeware/bin",
       "libraryName": "TestWebsocketService",
       "enabled": true,
       "startlevel": 2
