@@ -38,4 +38,6 @@ DeployShapeConfiguration(${PROJECT_NAME}
 	${CMAKE_CURRENT_SOURCE_DIR}/configuration configuration
 )
 
+DeployShapeConfigurationStartUp("${PROJECT_INSTALL_PREFIX}/bin/startup" ${PROJECT_NAME})
+
 ConfigureMsvcProject("${PROJECT_INSTALL_PREFIX}/bin/startup" ${PROJECT_NAME})
