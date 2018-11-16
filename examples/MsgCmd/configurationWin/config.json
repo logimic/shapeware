@@ -2,21 +2,21 @@
   "applicationName": "startup",
   "resourceDir": "",
   "dataDir": "",
-  "cacheDir": "cache",
+  "cacheDir": "",
   "userDir": "",
   "configurationDir": "configuration",
-  "deploymentDir": "../bin/Debug",
+  "deploymentDir": "../../bin/Debug",
   "components": [
     {
       "name": "shape::TraceFormatService",
-      "libraryPath": "../../../../shape/build/VS14_2015_x64/bin/Debug",
+      "libraryPath": "../../../../../shape/build/VS14_2015_x64/bin/Debug",
       "libraryName": "TraceFormatService",
       "enabled": true,
       "startlevel": -4
     },
     {
       "name": "shape::TraceFileService",
-      "libraryPath": "../../../../shape/build/VS14_2015_x64/bin/Debug",
+      "libraryPath": "../../../../../shape/build/VS14_2015_x64/bin/Debug",
       "libraryName": "TraceFileService",
       "enabled": true,
       "startlevel": -3
@@ -33,7 +33,7 @@
       "libraryPath": "",
       "libraryName": "CommandService",
       "enabled": true,
-      "startlevel": 0
+      "startlevel": 1
     },
     {
       "name": "shape::CommandLineService",
@@ -41,6 +41,27 @@
       "libraryName": "CommandLineService",
       "enabled": true,
       "startlevel": 1
+    },
+    {
+      "name": "shape::MqMessageService",
+      "libraryPath": "",
+      "libraryName": "MqMessageService",
+      "enabled": true,
+      "startlevel": 1
+    },
+    {
+      "name": "shape::MsgCmd",
+      "libraryPath": "",
+      "libraryName": "MsgCmd",
+      "enabled": true,
+      "startlevel": 2
+    },
+    {
+      "name": "shape::MsgCmdEcho",
+      "libraryPath": "",
+      "libraryName": "MsgCmdEcho",
+      "enabled": true,
+      "startlevel": 2
     }
   ]
 }

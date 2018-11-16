@@ -3,7 +3,7 @@ project(shapeware)
 cmake_minimum_required(VERSION 3.0)
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
-
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -24,6 +24,9 @@ endif()
 
 FIND_PACKAGE(shape REQUIRED)
 
+set(PROJECT_INSTALL_PREFIX ${PROJECT_NAME})
+set(CMAKE_INSTALL_PREFIX ${shape_DEPLOY})
+
 message(STATUS "CMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}")
 include(${CMAKE_MODULE_PATH}/ShapeComponentDeclaration.cmake)
 
@@ -37,6 +40,7 @@ add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)
 
 add_subdirectory(include)
 add_subdirectory(CppRestService)
+add_subdirectory(CurlRestApiService)
 add_subdirectory(WebsocketService)
 add_subdirectory(WebsocketCppService)
 add_subdirectory(WebsocketCppClientService)
@@ -47,6 +51,10 @@ add_subdirectory(startup)
 
 if(${BUILD_TESTING})
   add_subdirectory(tests)
+endif()
+
+if(${BUILD_EXAMPLES})
+  add_subdirectory(examples)
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in ${PROJECT_BINARY_DIR}/${PROJECT_NAME}Config.cmake @ONLY)

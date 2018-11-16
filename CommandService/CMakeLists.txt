@@ -22,3 +22,5 @@ else()
 endif()
 
 target_link_libraries(${PROJECT_NAME} ${LIBWEBSOCKETS_LIBRARIES_STATIC})
+
+DeployShapeComponent(${PROJECT_NAME})

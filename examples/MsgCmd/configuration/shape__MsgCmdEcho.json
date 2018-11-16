@@ -1,0 +1,12 @@
+{
+  "component": "shape::MsgCmdEcho",
+  "instance": "MsgCmdEcho",
+  "RequiredInterfaces": [
+    {
+      "name": "shape::IMessageService",
+      "target": {
+        "LocalMqName": "MsgCmdEcho"
+      }
+    }
+  ]
+}
