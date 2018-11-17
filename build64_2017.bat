@@ -5,7 +5,6 @@ set buildexp=build\\VS15_2017_x64
 
 set currentdir=%cd%
 set builddir=.\\%buildexp%
-set libsdir=..\\
 
 mkdir %builddir%
 
@@ -23,4 +22,5 @@ cmake -G "Visual Studio 15 2017 Win64" -DBUILD_TESTING:BOOL=true -DCMAKE_TOOLCHA
 popd
 
 rem //build from generated build environment
-cmake --build %builddir% --target install
+cmake --build %builddir% --config Debug --target install
+cmake --build %builddir% --config Release --target install
