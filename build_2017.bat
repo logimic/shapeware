@@ -23,4 +23,5 @@ cmake -G "Visual Studio 15 2017" -DBUILD_TESTING:BOOL=true -DCMAKE_TOOLCHAIN_FIL
 popd
 
 rem //build from generated build environment
-cmake --build %builddir%
+cmake --build %builddir% --target install
+
