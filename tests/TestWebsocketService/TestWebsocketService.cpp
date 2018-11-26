@@ -197,7 +197,7 @@ namespace shape {
 
   };
 
-  class TestWebsocketService::Imp
+  class Imp
   {
   private:
     Imp()
@@ -427,8 +427,8 @@ namespace shape {
   class FixTestWebsocketService : public ::testing::Test
   {
   protected:
-    TestWebsocketService::Imp *tws1 = nullptr;
-    TestWebsocketService::Imp *tws2 = nullptr;
+    Imp *tws1 = nullptr;
+    Imp *tws2 = nullptr;
     IWebsocketService *wss1 = nullptr;
     IWebsocketService *wss2 = nullptr;
     IWebsocketClientService *wsc1 = nullptr;
@@ -447,17 +447,17 @@ namespace shape {
     {
       //std::cout << ">>> SetUp" << std::endl;
       //we have 2 pairs of test instances
-      tws1 = &TestWebsocketService::Imp::get();
-      tws2 = &TestWebsocketService::Imp::get();
+      tws1 = &Imp::get();
+      tws2 = &Imp::get();
       ASSERT_EQ(2, tws1->m_iWebsocketServices.size());
       ASSERT_EQ(2, tws1->m_iWebsocketClientServices.size());
 
-      auto its = TestWebsocketService::Imp::get().m_iWebsocketServices.begin();
+      auto its = Imp::get().m_iWebsocketServices.begin();
       wss1 = its->first;
       wssh1 = its->second.get();
       wss2 = (++its)->first;
       wssh2 = its->second.get();
-      auto itc = TestWebsocketService::Imp::get().m_iWebsocketClientServices.begin();
+      auto itc = Imp::get().m_iWebsocketClientServices.begin();
       wsc1 = itc->first;
       wsch1 = itc->second.get();
       wsc2 = (++itc)->first;

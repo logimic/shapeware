@@ -18,40 +18,28 @@
 
 #include "ShapeProperties.h"
 
-#include "gtest/gtest.h"
-
-#include <string>
-#include <thread>
-#include <set>
-#include <memory>
-
 namespace shape {
   class ILaunchService;
   class ITraceService;
-  class IWebsocketService;
-  class IWebsocketClientService;
+  class IRestApiService;
 
-  class TestWebsocketService
+  class TestCurlRestApiService
   {
   public:
-    TestWebsocketService();
-    virtual ~TestWebsocketService();
+    TestCurlRestApiService();
+    virtual ~TestCurlRestApiService();
 
     void activate(const Properties *props = 0);
     void deactivate();
     void modify(const Properties *props);
 
-    void attachInterface(IWebsocketClientService* iface);
-    void detachInterface(IWebsocketClientService* iface);
-
-    void attachInterface(IWebsocketService* iface);
-    void detachInterface(IWebsocketService* iface);
+    void attachInterface(IRestApiService* iface);
+    void detachInterface(IRestApiService* iface);
 
     void attachInterface(ILaunchService* iface);
     void detachInterface(ILaunchService* iface);
 
     void attachInterface(ITraceService* iface);
     void detachInterface(ITraceService* iface);
-
   };
 }

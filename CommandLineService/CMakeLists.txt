@@ -21,6 +21,6 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-target_link_libraries(${PROJECT_NAME} ${LIBWEBSOCKETS_LIBRARIES_STATIC})
+target_link_libraries(${PROJECT_NAME})
 
 DeployShapeComponent(${PROJECT_NAME})

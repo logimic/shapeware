@@ -1,11 +1,10 @@
-project(TestWebsocketService)
+project(TestCurlRestApiService)
 
 find_package(GoogleTest REQUIRED)
 
-set(COMPONENT shape::TestWebsocketService)
+set(COMPONENT shape::TestCurlRestApiService)
 DeclareShapeComponent(${COMPONENT})
-AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketClientService MANDATORY MULTIPLE)
-AddShapeRequiredInterface(${COMPONENT} shape::IWebsocketService MANDATORY MULTIPLE)
+AddShapeRequiredInterface(${COMPONENT} shape::IRestApiService MANDATORY SINGLE)
 AddShapeRequiredInterface(${COMPONENT} shape::ILaunchService MANDATORY SINGLE)
 AddShapeRequiredInterface(${COMPONENT} shape::ITraceService MANDATORY MULTIPLE)
 ConfigureShapeComponent(${COMPONENT} COMPONENT_HXX)

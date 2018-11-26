@@ -5,6 +5,8 @@ cmake_minimum_required(VERSION 3.0)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
+enable_testing()
+
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -36,12 +38,12 @@ include_directories(${shape_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # external/libwebsockets
-add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
+#add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
 
 add_subdirectory(include)
-add_subdirectory(CppRestService)
+#add_subdirectory(CppRestService)
 add_subdirectory(CurlRestApiService)
-add_subdirectory(WebsocketService)
+#add_subdirectory(WebsocketService)
 add_subdirectory(WebsocketCppService)
 add_subdirectory(WebsocketCppClientService)
 add_subdirectory(MqMessageService)
