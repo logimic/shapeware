@@ -23,4 +23,6 @@ cmake -G "Unix Makefiles" -DBUILD_TESTING:BOOL=true -DCMAKE_BUILD_TYPE=Debug -DL
 popd
 
 #build from generated build environment
-cmake --build ${builddir}
+cmake --build ${builddir} --config Debug --target install
+cmake --build ${builddir} --config Release --target install
+
