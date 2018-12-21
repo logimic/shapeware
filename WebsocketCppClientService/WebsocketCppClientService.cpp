@@ -210,7 +210,7 @@ namespace shape {
         }
       }
       else {
-        TRC_WARNING("Already connected to: " << PAR(uri));
+        TRC_WARNING("Try connect to: " << PAR(m_uri) <<  "but already connected to: " << PAR(uri));
       }
 
       TRC_FUNCTION_LEAVE("");
