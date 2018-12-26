@@ -30,9 +30,8 @@ REST, and OAuth library The C++ REST...
 ```
 ### Linux
 
-Install cpprestsdk:
+Install libcurl:
 
-$ sudo apt-get libcpprest-dev
 $ sudo apt-get install libcurl4-openssl-dev
 
 ## Build
