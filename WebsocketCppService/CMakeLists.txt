@@ -1,5 +1,7 @@
 project(WebsocketCppService)
 
+find_package(OPENSSL REQUIRED)
+
 set(COMPONENT shape::WebsocketCppService)
 DeclareShapeComponent(${COMPONENT})
 AddShapeProvidedInterface(${COMPONENT} shape::IWebsocketService)
@@ -24,6 +26,7 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-target_link_libraries(${PROJECT_NAME})
+#target_link_libraries(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 
 DeployShapeComponent(${PROJECT_NAME})
