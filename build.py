@@ -56,8 +56,7 @@ def main():
     parameters = " " + dTesting + " " + dToolChain + " " + dSsl + " " + dShape
 
     command = "cmake" + generator + parameters + " " + mainDir        
-
-    #cmake -G "Visual Studio 15 2017 Win64" -DBUILD_TESTING:BOOL=true -DCMAKE_TOOLCHAIN_FILE=%vcpkg% -DLWS_WITH_SSL:BOOL=false -Dshape_DIR:PATH=%shape% %currentdir%
+    
     print("command: " + command)  
     os.chdir(buildDir)   
     call(command)    
