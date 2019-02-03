@@ -5,7 +5,7 @@ shape plug-ins
 
 - Git
 - Cmake
-- shape https://github.com/logimic/shape 
+- shape https://github.com/logimic/shape
 
 ### Windows
 
@@ -39,10 +39,12 @@ $ sudo apt-get install libcurl4-openssl-dev
 ```bash
 $ git clone https://github.com/logimic/shapeware.git
 $ cd shapeware
-$ py shape.py --build
-or
-$ build32.bat         #for Win x86
-$ build64.bat         #for Win x64
-$ ./buildMake.sh      #for Linux
-$ ./buildEclipse.sh   #for Linux Eclipse IDE
+```
+then for your platform
+```bash
+$ python3 build.py -G "Unix Makefiles"  #for Raspberry Pi
+$ build32.bat                           #for Win x86
+$ build64.bat                           #for Win x64
+$ ./buildMake.sh                        #for Linux
+$ ./buildEclipse.sh                     #for Linux Eclipse IDE
 ```
