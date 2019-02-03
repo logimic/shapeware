@@ -47,7 +47,16 @@ def main():
     os.chdir("..")
     shape = os.path.normpath(os.getcwd() + "/shape/" +  buildexp)
 
-    vcpkg=os.path.normpath("c:/devel/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    vcpkg = ""
+    if args.gen == "Unix Makefiles":
+        vcpkg = ""
+    elif args.gen == "Visual Studio 15 2017 Win64":
+        vcpkg = os.path.normpath("c:/devel/vcpkg/scripts/buildsystems/vcpkg.cmake")    
+    elif args.gen == "Visual Studio 15 2017":
+        vcpkg = os.path.normpath("c:/devel/vcpkg/scripts/buildsystems/vcpkg.cmake")            
+    else:
+        vcpkg = ""
+
     dTesting = "-DBUILD_TESTING:BOOL=true"    
     dShape= "-Dshape_DIR:PATH=" + shape
     dSsl = "-DLWS_WITH_SSL:BOOL=false"
