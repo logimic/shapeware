@@ -37,7 +37,7 @@ $ sudo apt-get install libcurl4-openssl-dev
 ## Build
 
 ```bash
-$ git clone https://github.com/logimic/shapeware.git
+$ git clone --recursive https://github.com/logimic/shapeware
 $ cd shapeware
 ```
 then for your platform
