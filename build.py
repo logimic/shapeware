@@ -92,6 +92,7 @@ def main():
         os.chdir(buildDir)   
         os.system(command)            
 
+        os.chdir(mainDir)
         command = "cmake --build " + buildDir + " --config Release --target install"
         os.system(command)     
 
