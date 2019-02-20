@@ -209,6 +209,7 @@ namespace shape {
 
   void TestSimulationIRestApiService::modify(const shape::Properties *props)
   {
+    (void)props; //silence -Wunused-parameter
   }
 
   void TestSimulationIRestApiService::attachInterface(shape::ITraceService* iface)

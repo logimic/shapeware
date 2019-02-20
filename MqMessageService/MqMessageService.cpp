@@ -308,6 +308,7 @@ namespace shape {
 
     void modify(const shape::Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
     }
 
   private:
