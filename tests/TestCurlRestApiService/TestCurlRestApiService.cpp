@@ -57,6 +57,7 @@ namespace shape {
 
     void activate(const Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
       TRC_FUNCTION_ENTER("");
       TRC_INFORMATION(std::endl <<
         "******************************" << std::endl <<
@@ -83,6 +84,7 @@ namespace shape {
 
     void modify(const Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
     }
 
     void attachInterface(IRestApiService* iface)

@@ -2,7 +2,7 @@ project(shapeware)
 
 cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+#set(CMAKE_VERBOSE_MAKEFILE ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 enable_testing()
@@ -23,6 +23,12 @@ if(NOT CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake|MSBuild)")
     message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
   endif()
 endif()
+
+############# warnings
+#set(CPPFLAGS "-Wdate-time -D_FORTIFY_SOURCE=2")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wall -Wextra ${CPPFLAGS}")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wall -Wextra ${CPPFLAGS}")
+#############
 
 FIND_PACKAGE(shape REQUIRED)
 

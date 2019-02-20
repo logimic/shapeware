@@ -101,6 +101,8 @@ namespace shape {
     void on_message(connection_hdl hdl, WsClient::message_ptr msg)
     {
       TRC_FUNCTION_ENTER("");
+      
+      (void)hdl; //silence -Wunused-parameter
 
       if (m_messageStrHandlerFunc) {
         m_messageStrHandlerFunc(msg->get_payload());
@@ -284,6 +286,7 @@ namespace shape {
 
     void activate(const shape::Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
       TRC_FUNCTION_ENTER("");
       TRC_INFORMATION(std::endl <<
         "******************************" << std::endl <<
@@ -430,6 +433,7 @@ namespace shape {
 
   void WebsocketCppClientService::modify(const shape::Properties *props)
   {
+    (void)props; //silence -Wunused-parameter
   }
 
   void WebsocketCppClientService::attachInterface(shape::ITraceService* iface)

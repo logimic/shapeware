@@ -308,6 +308,7 @@ namespace shape {
 
     void modify(const shape::Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
     }
 
   private:
@@ -413,9 +414,9 @@ namespace shape {
     {
       TRC_INFORMATION("Send to MQ: " << std::endl << MEM_HEX_CHAR(message.data(), message.size()));
 
-      unsigned long toWrite = message.size();
+      unsigned long toWrite = static_cast<unsigned long>(message.size());
       unsigned long written = 0;
-      bool reconnect = false;
+      //bool reconnect = false;
       bool fSuccess;
 
       connect(); //open write channel if not connected yet
