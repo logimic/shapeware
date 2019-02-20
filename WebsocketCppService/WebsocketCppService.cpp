@@ -599,6 +599,7 @@ namespace shape {
 
   void WebsocketCppService::modify(const shape::Properties *props)
   {
+    (void)props; //silence -Wunused-parameter
   }
 
   void WebsocketCppService::attachInterface(shape::ITraceService* iface)

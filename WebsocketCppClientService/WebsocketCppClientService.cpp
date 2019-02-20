@@ -101,6 +101,8 @@ namespace shape {
     void on_message(connection_hdl hdl, WsClient::message_ptr msg)
     {
       TRC_FUNCTION_ENTER("");
+      
+      (void)hdl; //silence -Wunused-parameter
 
       if (m_messageStrHandlerFunc) {
         m_messageStrHandlerFunc(msg->get_payload());

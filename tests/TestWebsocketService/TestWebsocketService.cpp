@@ -18,6 +18,7 @@
 #include "IWebsocketService.h"
 #include "IWebsocketClientService.h"
 #include "ILaunchService.h"
+#include "Args.h"
 #include "GTestStaticRunner.h"
 
 #include "Trace.h"
@@ -308,6 +309,7 @@ namespace shape {
       }
     }
 
+    /*
     class Args
     {
     public:
@@ -345,6 +347,7 @@ namespace shape {
       int m_argc = 0;
       char** m_argv = nullptr;
     };
+    */
 
     void runTread()
     {

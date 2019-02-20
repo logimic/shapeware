@@ -416,7 +416,7 @@ namespace shape {
 
       unsigned long toWrite = static_cast<unsigned long>(message.size());
       unsigned long written = 0;
-      bool reconnect = false;
+      //bool reconnect = false;
       bool fSuccess;
 
       connect(); //open write channel if not connected yet

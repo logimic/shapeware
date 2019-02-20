@@ -54,6 +54,9 @@ namespace shape {
       std::string doCmd(const std::string& params) override
       {
         TRC_FUNCTION_ENTER("");
+
+        (void)params; //silence -Wunused-parameter
+
         auto commands = m_imp->getCommands();
         std::ostringstream os;
         for (auto cmd : commands) {
@@ -85,6 +88,8 @@ namespace shape {
       std::string doCmd(const std::string& params) override
       {
         TRC_FUNCTION_ENTER("");
+
+        (void)params; //silence -Wunused-parameter
 
         std::string retval = "quit command invoked";
         
