@@ -300,6 +300,7 @@ namespace shape {
       }
       catch (websocketpp::exception const &e) {
         // Websocket exception on listen. Get char string via e.what().
+        CATCH_EXC_TRC_WAR(websocketpp::exception, e, "listen failed");
       }
 
       // Starting Websocket accept.

@@ -312,7 +312,7 @@ namespace shape {
       Args() = delete;
       Args(const std::vector<std::string>& args)
       {
-        m_argc = args.size();
+        m_argc = static_cast<int>(args.size());
         if (m_argc > 0)
         {
           m_argv = shape_new char *[m_argc + 1];
