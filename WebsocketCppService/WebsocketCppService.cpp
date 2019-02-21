@@ -67,6 +67,7 @@ namespace shape {
     std::map<connection_hdl, std::string, std::owner_less<connection_hdl>> m_connectionsStrMap;
 
     bool m_autoStart = true;
+    bool m_acceptOnlyLocalhost = false;
     bool m_runThd = false;
     std::thread m_thd;
 
@@ -142,7 +143,7 @@ namespace shape {
     {
       //TODO on_connection can be use instead, however we're ready for authentication by a token
       TRC_FUNCTION_ENTER("");
-      bool retval = true;
+      bool valid = true;
       
       websocketpp::server<websocketpp::config::asio>::connection_ptr con = m_server.get_con_from_hdl(hdl);
 
@@ -151,33 +152,46 @@ namespace shape {
       os << con->get_handle().lock().get();
       std::string connId = os.str();
 
-      TRC_DEBUG("Connected: " << PAR(connId));;
-
       websocketpp::uri_ptr uri = con->get_uri();
       std::string query = uri->get_query(); // returns empty string if no query string set.
-      if (!query.empty()) {
-        // Split the query parameter string here, if desired.
-        // We assume we extracted a string called 'id' here.
-      }
-      else {
-        // Reject if no query parameter provided, for example.
-        //return false;
+      std::string host = uri->get_host();
+
+      if (m_acceptOnlyLocalhost) {
+        if (host == "localhost" || host == "127.0.0.1") {
+          valid = true;
+        }
+        else {
+          valid = false;
+          TRC_INFORMATION("Connection refused: " << PAR(connId) << PAR(host));;
+        }
       }
 
-      {
-        std::unique_lock<std::mutex> lock(m_mux);
-        m_connectionsStrMap.insert(std::make_pair(hdl, connId));
-      }
+      if (valid) {
+        TRC_INFORMATION("Connected: " << PAR(connId) << PAR(host));;
 
-      if (m_openHandlerFunc) {
-        m_openHandlerFunc(connId);
-      }
-      else {
-        TRC_WARNING("Message handler is not registered");
-      }
+        if (!query.empty()) {
+          // Split the query parameter string here, if desired.
+          // We assume we extracted a string called 'id' here.
+        }
+        else {
+          // Reject if no query parameter provided, for example.
+          //return false;
+        }
 
-      TRC_FUNCTION_LEAVE(PAR(retval));
-      return true;
+        {
+          std::unique_lock<std::mutex> lock(m_mux);
+          m_connectionsStrMap.insert(std::make_pair(hdl, connId));
+        }
+
+        if (m_openHandlerFunc) {
+          m_openHandlerFunc(connId);
+        }
+        else {
+          TRC_WARNING("Message handler is not registered");
+        }
+      }
+      TRC_FUNCTION_LEAVE(PAR(valid));
+      return valid;
     }
 
     void on_fail(connection_hdl hdl)
@@ -436,7 +450,8 @@ namespace shape {
       // WsServer url will be http://localhost:<port> default port: 1338
       props->getMemberAsInt("WebsocketPort", m_port);
       props->getMemberAsBool("AutoStart", m_autoStart);
-      TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart));
+      props->getMemberAsBool("acceptOnlyLocalhost", m_acceptOnlyLocalhost);
+      TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart) << PAR(m_acceptOnlyLocalhost));
 
       // set up access channels to only log interesting things
       m_server.clear_access_channels(websocketpp::log::alevel::all);
