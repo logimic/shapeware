@@ -157,7 +157,7 @@ namespace shape {
       std::string host = uri->get_host();
 
       if (m_acceptOnlyLocalhost) {
-        if (host == "localhost" || host == "127.0.0.1") {
+        if (host == "localhost" || host == "127.0.0.1" || host == "::1") {
           valid = true;
         }
         else {
