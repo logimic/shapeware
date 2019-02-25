@@ -32,19 +32,22 @@ REST, and OAuth library The C++ REST...
 
 Install libcurl:
 
+```
 $ sudo apt-get install libcurl4-openssl-dev
+```
 
 ## Build
 
-```bash
+```
 $ git clone --recursive https://github.com/logimic/shapeware
 $ cd shapeware
 ```
-then for your platform
-```bash
-$ python3 build.py -G "Unix Makefiles"  #for Raspberry Pi
-$ build32.bat                           #for Win x86
-$ build64.bat                           #for Win x64
-$ ./buildMake.sh                        #for Linux
-$ ./buildEclipse.sh                     #for Linux Eclipse IDE
+
+Then run Python building sript:
+
 ```
+$ python3 build.py                        #for Linux, Raspberry Pi
+$ py build.py                             #for Win
+```
+
+Building parameters are specified in **bcfgWin.json** and **bcfgLin.json** files consumed by the building script.
