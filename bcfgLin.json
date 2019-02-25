@@ -1,0 +1,8 @@
+{
+  "generator": "Unix Makefiles",
+  "parameters": [
+    "-BUILD_TESTING:BOOL=true",
+    "-LWS_WITH_SSL:BOOL=false",
+    "-shape_DIR:PATH=./"
+  ]
+}
