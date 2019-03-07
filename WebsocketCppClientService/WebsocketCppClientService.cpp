@@ -100,7 +100,7 @@ namespace shape {
 
     void on_message(connection_hdl hdl, WsClient::message_ptr msg)
     {
-      TRC_FUNCTION_ENTER("");
+      //TRC_FUNCTION_ENTER("");
       
       (void)hdl; //silence -Wunused-parameter
 
@@ -114,7 +114,7 @@ namespace shape {
         m_messageHandlerFunc(vmsg);
       }
 
-      TRC_FUNCTION_LEAVE("");
+      //TRC_FUNCTION_LEAVE("");
     }
 
     void on_fail(connection_hdl hdl)
