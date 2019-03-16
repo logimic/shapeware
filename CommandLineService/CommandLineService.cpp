@@ -60,6 +60,7 @@ namespace shape {
         "******************************"
       );
 
+      m_runThdFlg = true;
       m_thd = std::thread([&]() {
         runThd();
       });
@@ -77,6 +78,7 @@ namespace shape {
       );
 
       //std::cout << "joining CommandLineService thd ... ";
+      m_runThdFlg = false;
       if (m_thd.joinable()) {
         m_thd.join();
       }
