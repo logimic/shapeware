@@ -115,17 +115,18 @@ namespace shape {
 
       if (found) {
         TRC_DEBUG("Found: " << PAR(connId));;
+        found = false;
 
         if (m_messageStrHandlerFunc) {
           m_messageStrHandlerFunc(msg->get_payload(), connId);
-          found = false;
+          found = true;
         }
 
         if (m_messageHandlerFunc) {
           uint8_t* buf = (uint8_t*)msg->get_payload().data();
           std::vector<uint8_t> vmsg(buf, buf + msg->get_payload().size());
           m_messageHandlerFunc(vmsg, connId);
-          found = false;
+          found = true;
         }
 
         if (!found) {
