@@ -43,13 +43,9 @@ set_directory_properties(PROPERTIES COMPILE_DEFINITIONS $<$<CONFIG:Debug>:_DEBUG
 include_directories(${shape_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# external/libwebsockets
-#add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
-
 add_subdirectory(include)
 #add_subdirectory(CppRestService)
 add_subdirectory(CurlRestApiService)
-#add_subdirectory(WebsocketService)
 add_subdirectory(WebsocketCppService)
 add_subdirectory(WebsocketCppClientService)
 add_subdirectory(MqMessageService)
