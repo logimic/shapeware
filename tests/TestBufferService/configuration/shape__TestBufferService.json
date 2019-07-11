@@ -1,0 +1,4 @@
+{
+  "component": "shape::TestBufferService",
+  "instance": "shape::TestBufferService"
+}
