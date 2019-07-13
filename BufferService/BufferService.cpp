@@ -39,13 +39,6 @@
 TRC_INIT_MODULE(shape::BufferService);
 
 namespace shape {
-  //class Record {
-  //  Record(const std::string & str)
-
-  //  {}
-  //private:
-  //  const std::string & str
-  //};
 
   class BufferService::Imp
   {
@@ -140,12 +133,10 @@ namespace shape {
           THROW_EXC_TRC_WAR(std::logic_error, "Cannot open persistent buffer file: " PAR(m_fname));
         }
 
-        //// get length of file:
+        //TODO get length of file:
         //int flen = m_file.tellg();
         //m_file.seekg(0, m_file.beg);
-
         //if (flen < sizeof(size_t)) {
-
         //}
 
         // allocate buffer
@@ -255,21 +246,20 @@ namespace shape {
 
       m_cacheDir = m_iLaunchService->getCacheDir();
       
-      //mingle name as instance name allows any char not possible in file name
-      m_fname = m_instance;
-      // hash name
-      unsigned hash = 0;
-      for (size_t i = 0; i < m_instance.length(); ++i) {
-        hash += (unsigned)(m_instance[i] * pow(31, i));
-      }
-      // replace not allowed chars
-      std::string toreplace("\/<>|\":?*");
-      for (auto c : toreplace) {
-        std::replace(m_instance.begin(), m_instance.end(), c, '_');
-      }
-      //mingle as combination of original instance name and its hash
       std::ostringstream os;
-      os << m_cacheDir << '/' << m_instance << '_' << hash << ".cache";
+      os << m_cacheDir << '/';
+
+      //mingle name as instance name allows any char not possible in file name
+      for (auto c : m_instance) {
+        if (c == '\\' || c == '/' || c == '<' || c == '>' || c == '|' || c == '\"' || c == ':' || c == '?' || c == '*') {
+          // cannot be in file name => replace by num representation
+          os << std::setfill('0') << std::hex << std::setw(2) << (int)c;
+        }
+        else {
+          os << c;
+        }
+      }
+      os << '_' << m_instance.size() << ".cache";
       m_fname = os.str();
 
     }
