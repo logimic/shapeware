@@ -26,6 +26,8 @@
 #include <queue>
 #include <fstream>
 #include <mutex>
+#include <cmath>
+#include <algorithm>
 
 #include "shape__BufferService.hxx"
 
