@@ -47,7 +47,7 @@ namespace shape {
     
     ILaunchService* m_iLaunchService = nullptr;
 
-    std::queue<std::string> m_queue;
+    std::queue<IBufferService::Record> m_queue;
 
     bool m_persistent = true;
     bool m_maxSize = 2^30; //GB
@@ -86,25 +86,25 @@ namespace shape {
       return retval;
     }
 
-    std::string front() const
+    IBufferService::Record front() const
     {
       TRC_FUNCTION_ENTER("");
       std::unique_lock<std::mutex> lck(m_mux);
-      std::string str = m_queue.front();
+      IBufferService::Record rec = m_queue.front();
       TRC_FUNCTION_LEAVE("");
-      return str;
+      return rec;
     }
 
-    std::string back() const
+    IBufferService::Record back() const
     {
       TRC_FUNCTION_ENTER("");
       std::unique_lock<std::mutex> lck(m_mux);
-      std::string str = m_queue.back();
+      IBufferService::Record rec = m_queue.back();
       TRC_FUNCTION_LEAVE("");
-      return str;
+      return rec;
     }
 
-    void push(const std::string & str)
+    void push(const IBufferService::Record & str)
     {
       TRC_FUNCTION_ENTER("");
       std::unique_lock<std::mutex> lck(m_mux);
@@ -145,30 +145,48 @@ namespace shape {
 
         while (ifs)
         {
-          size_t sz;
-          ifs.read((char*)(&sz), sizeof(sz));
+          IBufferService::Record rec;
+
+          // read timestamp
+          long long tst;
+          ifs.read((char*)(&tst), sizeof(tst));
+          rec.timestamp = tst;
+
           if (!ifs) {
+            // eof, break here
             break;
           }
-          if (ifs.bad()) {
-            THROW_EXC_TRC_WAR(std::logic_error, "Cannot read persistent buffer file: " PAR(m_fname));
-          }
 
-          if (sz > rbufSz) {
+          // read address
+          size_t sza;
+          ifs.read((char*)(&sza), sizeof(sza));
+         
+          if (sza > rbufSz) {
             // reallocate buffer
-            rbufSz = sz;
+            rbufSz = sza;
             rbuf.reset(shape_new char[rbufSz]);
           }
 
-          ifs.read(rbuf.get(), sz);
-          if (!ifs) {
-            break;
+          ifs.read(rbuf.get(), sza);
+          rec.address = std::string(rbuf.get(), sza);
+
+          // read content
+          size_t szc;
+          ifs.read((char*)(&szc), sizeof(szc));
+          if (szc > rbufSz) {
+            // reallocate buffer
+            rbufSz = szc;
+            rbuf.reset(shape_new char[rbufSz]);
           }
+          ifs.read(rbuf.get(), szc);
+          rec.content = std::vector<uint8_t>((uint8_t*)rbuf.get(), (uint8_t*)rbuf.get() + szc);
+
           if (ifs.bad()) {
             THROW_EXC_TRC_WAR(std::logic_error, "Cannot write persistent buffer file: " PAR(m_fname));
           }
 
-          m_queue.push(std::string(rbuf.get(), sz));
+          
+          m_queue.push(rec);
         }
 
         ifs.close();
@@ -192,16 +210,21 @@ namespace shape {
         
         while (!m_queue.empty())
         {
-          const std::string & str = m_queue.front();
-          size_t sz = str.size();
-          ofs.write((const char*)(&sz), sizeof(sz));
+          const IBufferService::Record & rec = m_queue.front();
+          ofs.write((const char*)(&rec.timestamp), sizeof(rec.timestamp));
+
+          size_t sza = rec.address.size();
+          ofs.write((const char*)(&sza), sizeof(sza));
+          ofs.write(rec.address.data(), sza);
+
+          size_t szc = rec.content.size();
+          ofs.write((const char*)(&szc), sizeof(szc));
+          ofs.write((const char*)rec.content.data(), szc);
+
           if (ofs.bad()) {
             THROW_EXC_TRC_WAR(std::logic_error, "Cannot write persistent buffer file: " PAR(m_fname));
           }
-          ofs.write(str.data(), str.size());
-          if (ofs.bad()) {
-            THROW_EXC_TRC_WAR(std::logic_error, "Cannot write persistent buffer file: " PAR(m_fname));
-          }
+
           m_queue.pop();
         }
         ofs.close();
@@ -329,19 +352,19 @@ namespace shape {
     return m_imp->size();
   }
 
-  std::string BufferService::front() const
+  IBufferService::Record BufferService::front() const
   {
     return m_imp->front();
   }
 
-  std::string BufferService::back() const
+  IBufferService::Record BufferService::back() const
   {
     return m_imp->back();
   }
 
-  void BufferService::push(const std::string & str)
+  void BufferService::push(const Record & rec)
   {
-    m_imp->push(str);
+    m_imp->push(rec);
   }
 
   void BufferService::pop()

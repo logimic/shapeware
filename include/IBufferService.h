@@ -18,22 +18,44 @@
 
 #include "ShapeDefines.h"
 #include <string>
+#include <vector>
 
 namespace shape {
   //FIFO buffer (queue)
   class IBufferService
   {
   public:
+    class Record {
+    public:
+      Record()
+      {}
+      virtual ~Record()
+      {}
+      Record(const std::string & adr, const std::vector<uint8_t> & cont, long long tst = 0)
+        : timestamp(tst)
+        , address(adr)
+        , content(cont)
+      {}
+      Record(const std::string & adr, const std::string & cont, long long tst = 0)
+        : timestamp(tst)
+        , address(adr)
+        , content((uint8_t*)cont.data(), (uint8_t*)cont.data() + cont.size())
+      {}
+      long long timestamp = 0;
+      std::string address;
+      std::vector<uint8_t> content;
+    };
+
     //Test whether buffer is empty
     virtual bool empty() = 0;
     //Return size
     virtual std::size_t size() const = 0;
     //Access next element
-    virtual std::string front() const = 0;
+    virtual Record front() const = 0;
     //Access last element
-    virtual std::string back() const = 0;
+    virtual Record back() const = 0;
     //Insert element
-    virtual void push(const std::string & str) = 0;
+    virtual void push(const Record & rec) = 0;
     //Remove next element
     virtual void pop() = 0;
     //persistent load

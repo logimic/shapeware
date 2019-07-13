@@ -167,15 +167,15 @@ namespace shape {
     shape::Tracer::get().removeTracerService(iface);
   }
 
-  const std::string MSG1("msg1");
-  const std::string MSG2("msg2");
-  const std::string MSG3("msg3");
-  const std::string MSG4("msg4");
-  const std::string MSG5("msg5");
-  const std::string MSG6("msg6");
-  const std::string MSG7("msg7");
+  const IBufferService::Record MSG1 = { "tpc1", "msg1" };
+  const IBufferService::Record MSG2 = { "tpc2", "msg2" };
+  const IBufferService::Record MSG3 = { "tpc3", "msg3" };
+  const IBufferService::Record MSG4 = { "tpc4", "msg4" };
+  const IBufferService::Record MSG5 = { "tpc5", "msg5" };
+  const IBufferService::Record MSG6 = { "tpc6", "msg6" };
+  const IBufferService::Record MSG7 = { "tpc7", "msg7" };
 
-  const std::string MSG8("msg8");
+  const IBufferService::Record MSG8 = { "tpc8", "msg8" };
 
   ////////////////////////////////////////////////////////
   class FixTestBufferService : public ::testing::Test
@@ -191,6 +191,22 @@ namespace shape {
     }
 
   };
+
+  bool eqrec(const IBufferService::Record &rec1, const IBufferService::Record &rec2)
+  {
+    if (rec1.address != rec2.address) {
+      return false;
+    }
+    if (rec1.content.size() != rec2.content.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < rec1.content.size(); i++) {
+      if (rec1.content[i] != rec2.content[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   TEST_F(FixTestBufferService, size)
   {
@@ -217,28 +233,30 @@ namespace shape {
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> front");
     const auto & st = Imp::get().m_iBufferService->front();
-    EXPECT_EQ(st, MSG1);
+    EXPECT_TRUE(eqrec(st, MSG1));
   }
 
   TEST_F(FixTestBufferService, back)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> back");
     const auto & st = Imp::get().m_iBufferService->back();
-    EXPECT_EQ(st, MSG7);
+    EXPECT_TRUE(eqrec(st, MSG7));
   }
 
   TEST_F(FixTestBufferService, push)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> push");
     Imp::get().m_iBufferService->push(MSG8);
-    EXPECT_EQ(Imp::get().m_iBufferService->back(), MSG8);
+    const auto & st = Imp::get().m_iBufferService->back();
+    EXPECT_TRUE(eqrec(st, MSG8));
   }
 
   TEST_F(FixTestBufferService, pop)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> pop");
     Imp::get().m_iBufferService->pop();
-    EXPECT_EQ(Imp::get().m_iBufferService->front(), MSG2);
+    const auto & st = Imp::get().m_iBufferService->front();
+    EXPECT_TRUE(eqrec(st, MSG2));
   }
 
   TEST_F(FixTestBufferService, save)
@@ -262,6 +280,15 @@ namespace shape {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> load");
     Imp::get().m_iBufferService->load();
     EXPECT_EQ(Imp::get().m_iBufferService->size(), 7);
+  }
+
+  TEST_F(FixTestBufferService, checkload)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> checkLoad");
+    const auto & st1 = Imp::get().m_iBufferService->front();
+    EXPECT_TRUE(eqrec(st1, MSG2));
+    const auto & st2 = Imp::get().m_iBufferService->back();
+    EXPECT_TRUE(eqrec(st2, MSG8));
   }
 
 }
