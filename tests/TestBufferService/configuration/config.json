@@ -1,0 +1,46 @@
+{
+  "applicationName": "startup",
+  "resourceDir": "",
+  "dataDir": "",
+  "cacheDir": ".",
+  "userDir": "",
+  "configurationDir": "configuration",
+  "deploymentDir": "../../..",
+  "components": [
+    {
+      "name": "shape::TraceFormatService",
+      "libraryPath": "shape/bin",
+      "libraryName": "TraceFormatService",
+      "enabled": true,
+      "startlevel": -4
+    },
+    {
+      "name": "shape::TraceFileService",
+      "libraryPath": "shape/bin",
+      "libraryName": "TraceFileService",
+      "enabled": true,
+      "startlevel": -3
+    },
+    {
+      "name": "shape::LauncherService",
+      "libraryPath": "",
+      "libraryName": "",
+      "enabled": true,
+      "startlevel": -2
+    },
+    {
+      "name": "shape::BufferService",
+      "libraryPath": "shapeware/bin",
+      "libraryName": "BufferService",
+      "enabled": true,
+      "startlevel": 2
+    },
+    {
+      "name": "shape::TestBufferService",
+      "libraryPath": "shapeware/bin",
+      "libraryName": "TestBufferService",
+      "enabled": true,
+      "startlevel": 2
+    }
+  ]
+}
