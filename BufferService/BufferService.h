@@ -17,6 +17,7 @@
 #pragma once
 
 #include "IBufferService.h"
+#include "ILaunchService.h"
 #include "ShapeProperties.h"
 #include "ITraceService.h"
 
@@ -29,14 +30,19 @@ namespace shape {
 
     bool empty() override;
     std::size_t size() const override;
-    const std::string & front() const override;
-    const std::string & back() const override;
+    std::string front() const override;
+    std::string back() const override;
     void push(const std::string & str) override;
     void pop() override;
+    void load() override;
+    void save() override;
 
     void activate(const shape::Properties *props = 0);
     void deactivate();
     void modify(const shape::Properties *props);
+
+    void attachInterface(ILaunchService* iface);
+    void detachInterface(ILaunchService* iface);
 
     void attachInterface(shape::ITraceService* iface);
     void detachInterface(shape::ITraceService* iface);

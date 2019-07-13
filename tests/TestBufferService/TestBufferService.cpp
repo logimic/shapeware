@@ -184,23 +184,26 @@ namespace shape {
 
     void SetUp(void) override
     {
-      Imp::get().m_iBufferService->push(MSG1);
-      Imp::get().m_iBufferService->push(MSG2);
-      Imp::get().m_iBufferService->push(MSG3);
-      Imp::get().m_iBufferService->push(MSG4);
-      Imp::get().m_iBufferService->push(MSG5);
-      Imp::get().m_iBufferService->push(MSG6);
-      Imp::get().m_iBufferService->push(MSG7);
     }
 
     void TearDown(void) override
-    {}
+    {
+    }
 
   };
 
   TEST_F(FixTestBufferService, size)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> size");
+
+    Imp::get().m_iBufferService->push(MSG1);
+    Imp::get().m_iBufferService->push(MSG2);
+    Imp::get().m_iBufferService->push(MSG3);
+    Imp::get().m_iBufferService->push(MSG4);
+    Imp::get().m_iBufferService->push(MSG5);
+    Imp::get().m_iBufferService->push(MSG6);
+    Imp::get().m_iBufferService->push(MSG7);
+
     EXPECT_EQ(Imp::get().m_iBufferService->size(), 7);
   }
 
@@ -238,6 +241,13 @@ namespace shape {
     EXPECT_EQ(Imp::get().m_iBufferService->front(), MSG2);
   }
 
+  TEST_F(FixTestBufferService, save)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> save");
+    Imp::get().m_iBufferService->save();
+    EXPECT_EQ(Imp::get().m_iBufferService->size(), 0);
+  }
+
   TEST_F(FixTestBufferService, empty1)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> empty1");
@@ -245,6 +255,13 @@ namespace shape {
       Imp::get().m_iBufferService->pop();
     }
     EXPECT_TRUE(Imp::get().m_iBufferService->empty());
+  }
+
+  TEST_F(FixTestBufferService, load)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> load");
+    Imp::get().m_iBufferService->load();
+    EXPECT_EQ(Imp::get().m_iBufferService->size(), 7);
   }
 
 }

@@ -2,7 +2,7 @@
   "applicationName": "startup",
   "resourceDir": "",
   "dataDir": "",
-  "cacheDir": "",
+  "cacheDir": ".",
   "userDir": "",
   "configurationDir": "configuration",
   "deploymentDir": "../../..",

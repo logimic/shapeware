@@ -29,12 +29,16 @@ namespace shape {
     //Return size
     virtual std::size_t size() const = 0;
     //Access next element
-    virtual const std::string & front() const = 0;
+    virtual std::string front() const = 0;
     //Access last element
-    virtual const std::string & back() const = 0;
+    virtual std::string back() const = 0;
     //Insert element
     virtual void push(const std::string & str) = 0;
     //Remove next element
     virtual void pop() = 0;
+    //persistent load
+    virtual void load() = 0;
+    //persistent save
+    virtual void save() = 0;
   };
 }
