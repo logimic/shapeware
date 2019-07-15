@@ -47,8 +47,6 @@ namespace shape {
     
     ILaunchService* m_iLaunchService = nullptr;
 
-    std::queue<IBufferService::Record> m_queue;
-
     bool m_persistent = true;
     bool m_maxSize = 2^30; //GB
     int64_t m_maxDuration = 0;
@@ -56,6 +54,14 @@ namespace shape {
     std::string m_instance;
     std::string m_cacheDir;
     std::string m_fname;
+
+    std::queue<IBufferService::Record> m_queue;
+    std::condition_variable m_cond;
+    bool m_pushed;
+    bool m_runWorker;
+    std::thread m_worker;
+
+    ProcessFunc m_processFunc;
 
 
   ///////////////////////////////
@@ -66,7 +72,82 @@ namespace shape {
 
     ~Imp()
     {
+      stop();
     }
+
+    void registerProcessFunc(IBufferService::ProcessFunc func)
+    {
+      TRC_FUNCTION_ENTER("");
+      std::unique_lock<std::mutex> lck(m_mux);
+      if (!m_processFunc) {
+        m_processFunc = func;
+      }
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void unregisterProcessFunc()
+    {
+      TRC_FUNCTION_ENTER("");
+      m_processFunc = nullptr;
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void start()
+    {
+      TRC_FUNCTION_ENTER("");
+      m_pushed = false;
+      m_runWorker = true;
+      m_worker = std::thread([&]() { worker(); });
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void stop()
+    {
+      TRC_FUNCTION_ENTER("");
+      {
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_runWorker = false;
+        m_pushed = true;
+      }
+      m_cond.notify_all();
+
+      if (m_worker.joinable())
+        m_worker.join();
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    /// Worker thread function
+    void worker()
+    {
+      TRC_FUNCTION_ENTER("");
+      std::unique_lock<std::mutex> lck(m_mux, std::defer_lock);
+
+      while (m_runWorker) {
+
+        //wait for something in the queue
+        lck.lock();
+        m_cond.wait(lck, [&] { return m_pushed; }); //lock is released in wait
+        //lock is reacquired here
+        m_pushed = false;
+
+        while (m_runWorker) {
+          if (!m_queue.empty()) {
+            auto rec = m_queue.front();
+            m_queue.pop();
+            lck.unlock();
+            m_processFunc(rec);
+          }
+          else {
+            lck.unlock();
+            break;
+          }
+          lck.lock(); //lock for next iteration
+        }
+      }
+      TRC_FUNCTION_LEAVE("");
+    }
+
 
     bool empty()
     {
@@ -104,11 +185,22 @@ namespace shape {
       return rec;
     }
 
-    void push(const IBufferService::Record & str)
+    void push(const IBufferService::Record & rec)
     {
       TRC_FUNCTION_ENTER("");
       std::unique_lock<std::mutex> lck(m_mux);
-      m_queue.push(str);
+      m_queue.push(rec);
+      
+      int retval = 0;
+      {
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_queue.push(rec);
+        //retval = static_cast<uint8_t>(m_taskQueue.size());
+        m_pushed = true;
+      }
+      m_cond.notify_all();
+      //return retval;
+      
       TRC_FUNCTION_LEAVE("")
     }
 
@@ -340,6 +432,26 @@ namespace shape {
   BufferService::~BufferService()
   {
     delete m_imp;
+  }
+
+  void BufferService::registerProcessFunc(IBufferService::ProcessFunc func)
+  {
+    m_imp->registerProcessFunc(func);
+  }
+
+  void BufferService::unregisterProcessFunc()
+  {
+    m_imp->unregisterProcessFunc();
+  }
+
+  void BufferService::start()
+  {
+    m_imp->start();
+  }
+  
+  void BufferService::stop()
+  {
+    m_imp->stop();
   }
 
   bool BufferService::empty()

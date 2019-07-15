@@ -19,6 +19,7 @@
 #include "ShapeDefines.h"
 #include <string>
 #include <vector>
+#include <functional>
 
 namespace shape {
   //FIFO buffer (queue)
@@ -45,6 +46,13 @@ namespace shape {
       std::string address;
       std::vector<uint8_t> content;
     };
+
+    typedef std::function<bool(const Record &)> ProcessFunc;
+    
+    virtual void registerProcessFunc(ProcessFunc func) = 0;
+    virtual void unregisterProcessFunc() = 0;
+    virtual void start() = 0;
+    virtual void stop() = 0;
 
     //Test whether buffer is empty
     virtual bool empty() = 0;
