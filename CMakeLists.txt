@@ -2,7 +2,7 @@ project(shapeware)
 
 cmake_minimum_required(VERSION 3.0)
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+#set(CMAKE_VERBOSE_MAKEFILE ON)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 enable_testing()
@@ -24,6 +24,12 @@ if(NOT CMAKE_BUILD_TOOL MATCHES "(msdev|devenv|nmake|MSBuild)")
   endif()
 endif()
 
+############# warnings
+#set(CPPFLAGS "-Wdate-time -D_FORTIFY_SOURCE=2")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wall -Wextra ${CPPFLAGS}")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wall -Wextra ${CPPFLAGS}")
+#############
+
 FIND_PACKAGE(shape REQUIRED)
 
 set(PROJECT_INSTALL_PREFIX ${PROJECT_NAME})
@@ -37,13 +43,10 @@ set_directory_properties(PROPERTIES COMPILE_DEFINITIONS $<$<CONFIG:Debug>:_DEBUG
 include_directories(${shape_INCLUDE_DIRS})
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# external/libwebsockets
-#add_subdirectory(external/libwebsockets EXCLUDE_FROM_ALL)	
-
 add_subdirectory(include)
 #add_subdirectory(CppRestService)
+add_subdirectory(BufferService)
 add_subdirectory(CurlRestApiService)
-#add_subdirectory(WebsocketService)
 add_subdirectory(WebsocketCppService)
 add_subdirectory(WebsocketCppClientService)
 add_subdirectory(MqMessageService)

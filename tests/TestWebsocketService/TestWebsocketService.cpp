@@ -18,6 +18,7 @@
 #include "IWebsocketService.h"
 #include "IWebsocketClientService.h"
 #include "ILaunchService.h"
+#include "Args.h"
 #include "GTestStaticRunner.h"
 
 #include "Trace.h"
@@ -222,6 +223,7 @@ namespace shape {
 
     void activate(const Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
       TRC_FUNCTION_ENTER("");
       TRC_INFORMATION(std::endl <<
         "******************************" << std::endl <<
@@ -248,6 +250,7 @@ namespace shape {
 
     void modify(const Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
     }
 
     void attachInterface(IWebsocketClientService* iface)
@@ -305,44 +308,6 @@ namespace shape {
         m_iLaunchService = nullptr;
       }
     }
-
-    class Args
-    {
-    public:
-      Args() = delete;
-      Args(const std::vector<std::string>& args)
-      {
-        m_argc = args.size();
-        if (m_argc > 0)
-        {
-          m_argv = shape_new char *[m_argc + 1];
-          int n = 0;
-          for (; n < m_argc; n++)
-          {
-            m_argv[n] = shape_new char[args[n].size() + 1];
-            strcpy(m_argv[n], args[n].c_str());
-          }
-          m_argv[n] = nullptr; //mast be ended with null
-        }
-      }
-      ~Args()
-      {
-        if (m_argc > 0)
-        {
-          int n = 0;
-          for (int n = 0; n <= m_argc; n++) //last null
-            delete[] m_argv[n];
-          delete[] m_argv;
-        }
-      }
-
-      int* argc() { return &m_argc; }
-      char ** argv() { return m_argv; }
-
-    private:
-      int m_argc = 0;
-      char** m_argv = nullptr;
-    };
 
     void runTread()
     {
@@ -449,8 +414,8 @@ namespace shape {
       //we have 2 pairs of test instances
       tws1 = &Imp::get();
       tws2 = &Imp::get();
-      ASSERT_EQ(2, tws1->m_iWebsocketServices.size());
-      ASSERT_EQ(2, tws1->m_iWebsocketClientServices.size());
+      ASSERT_EQ((size_t)2, tws1->m_iWebsocketServices.size());
+      ASSERT_EQ((size_t)2, tws1->m_iWebsocketClientServices.size());
 
       auto its = Imp::get().m_iWebsocketServices.begin();
       wss1 = its->first;
@@ -493,10 +458,10 @@ namespace shape {
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(true, wsc1->isConnected());
+    EXPECT_TRUE(wsc1->isConnected());
     //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-    ASSERT_EQ(1, wssh1->m_connectionIdVect.size());
+    ASSERT_EQ((size_t)1, wssh1->m_connectionIdVect.size());
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
     wss1->sendMessage(msg, wssh1->m_connectionIdVect[0]);
@@ -506,7 +471,7 @@ namespace shape {
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(false, wsc1->isConnected());
+    EXPECT_FALSE(wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Server2Client2Message)
@@ -518,7 +483,7 @@ namespace shape {
 
     EXPECT_EQ(true, wsc2->isConnected());
 
-    ASSERT_EQ(1, wssh2->m_connectionIdVect.size());
+    ASSERT_EQ((size_t)1, wssh2->m_connectionIdVect.size());
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
     wss2->sendMessage(msg, wssh2->m_connectionIdVect[0]);
@@ -528,20 +493,20 @@ namespace shape {
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(CLOSE_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(false, wsc2->isConnected());
+    EXPECT_FALSE(wsc2->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Client1Server1Message1)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Client1Server1Message1");
-    EXPECT_EQ(true, wss1->isStarted());
+    EXPECT_TRUE(wss1->isStarted());
 
     //test 1st connect
     wsc1->connect(uri1);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(true, wsc1->isConnected());
+    EXPECT_TRUE(wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
@@ -552,7 +517,7 @@ namespace shape {
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(false, wsc1->isConnected());
+    EXPECT_FALSE(wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Client1Server1Message2)
@@ -563,7 +528,7 @@ namespace shape {
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(true, wsc1->isConnected());
+    EXPECT_TRUE(wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
@@ -574,7 +539,7 @@ namespace shape {
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(false, wsc1->isConnected());
+    EXPECT_FALSE(wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Client1Server2Message)
@@ -584,7 +549,7 @@ namespace shape {
     EXPECT_EQ(OPEN_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(true, wsc1->isConnected());
+    EXPECT_TRUE(wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
@@ -595,7 +560,7 @@ namespace shape {
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh2->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(false, wsc1->isConnected());
+    EXPECT_FALSE(wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Client2Server1Message)
@@ -605,7 +570,7 @@ namespace shape {
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(OPEN_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(true, wsc2->isConnected());
+    EXPECT_TRUE(wsc2->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
@@ -616,7 +581,7 @@ namespace shape {
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(CLOSE_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(false, wsc1->isConnected());
+    EXPECT_FALSE(wsc1->isConnected());
   }
 
   TEST_F(FixTestWebsocketService, Client12Server1Message)
@@ -626,12 +591,12 @@ namespace shape {
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(OPEN_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(true, wsc1->isConnected());
+    EXPECT_TRUE(wsc1->isConnected());
     wsc2->connect(uri1);
     EXPECT_EQ(OPEN_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(OPEN_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(true, wsc2->isConnected());
+    EXPECT_TRUE(wsc2->isConnected());
 
     {
       std::string msg(TEST_MSG_CLIENT);
@@ -652,7 +617,7 @@ namespace shape {
   TEST_F(FixTestWebsocketService, Server1Client12Message)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server1Client12Message");
-    ASSERT_GE(2, wssh1->m_connectionIdVect.size());
+    ASSERT_GE((size_t)2, wssh1->m_connectionIdVect.size());
 
     {
       std::string msg(TEST_MSG_SERVER);
@@ -673,7 +638,7 @@ namespace shape {
   TEST_F(FixTestWebsocketService, Server1BroadcastMessage)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server1BroadcastMessage");
-    EXPECT_GE(2, wssh1->m_connectionIdVect.size());
+    EXPECT_GE((size_t)2, wssh1->m_connectionIdVect.size());
 
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
@@ -686,7 +651,7 @@ namespace shape {
   TEST_F(FixTestWebsocketService, Client1Server1MessageVect)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Client1Server1MessageVect");
-    EXPECT_EQ(true, wsc1->isConnected());
+    EXPECT_TRUE(wsc1->isConnected());
 
     std::string msg(TEST_MSG_CLIENT);
     msg += std::to_string(++cnt);
@@ -698,9 +663,9 @@ namespace shape {
   TEST_F(FixTestWebsocketService, Server1Client1MessageVect)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Server1Client1MessageVect");
-    EXPECT_EQ(true, wsc1->isConnected());
+    EXPECT_TRUE(wsc1->isConnected());
 
-    ASSERT_LE(1, wssh1->m_connectionIdVect.size());
+    ASSERT_LE((size_t)1, wssh1->m_connectionIdVect.size());
     std::string msg(TEST_MSG_SERVER);
     msg += std::to_string(++cnt);
     std::vector<uint8_t> msgVect((uint8_t*)msg.data(), (uint8_t*)msg.data() + msg.size());
@@ -711,19 +676,19 @@ namespace shape {
   TEST_F(FixTestWebsocketService, Client12Close)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Client12Close");
-    EXPECT_EQ(true, wsc1->isConnected());
-    EXPECT_EQ(true, wsc2->isConnected());
+    EXPECT_TRUE(wsc1->isConnected());
+    EXPECT_TRUE(wsc2->isConnected());
 
     wsc1->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT));
     EXPECT_EQ(CLOSE_MSG_CLIENT, wsch1->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(false, wsc1->isConnected());
+    EXPECT_FALSE(wsc1->isConnected());
     
     wsc2->close();
     EXPECT_EQ(CLOSE_MSG_SERVER, wssh1->fetchMessage(MILLIS_WAIT)); //connected to wss1 in Client12Server1Message
     EXPECT_EQ(CLOSE_MSG_CLIENT, wsch2->fetchMessage(MILLIS_WAIT));
 
-    EXPECT_EQ(false, wsc2->isConnected());
+    EXPECT_FALSE(wsc2->isConnected());
   }
 }

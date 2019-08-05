@@ -54,6 +54,9 @@ namespace shape {
       std::string doCmd(const std::string& params) override
       {
         TRC_FUNCTION_ENTER("");
+
+        (void)params; //silence -Wunused-parameter
+
         auto commands = m_imp->getCommands();
         std::ostringstream os;
         for (auto cmd : commands) {
@@ -85,6 +88,8 @@ namespace shape {
       std::string doCmd(const std::string& params) override
       {
         TRC_FUNCTION_ENTER("");
+
+        (void)params; //silence -Wunused-parameter
 
         std::string retval = "quit command invoked";
         
@@ -180,6 +185,7 @@ namespace shape {
 
     void activate(const shape::Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
       TRC_FUNCTION_ENTER("");
       TRC_INFORMATION(std::endl <<
         "******************************" << std::endl <<
@@ -256,6 +262,7 @@ namespace shape {
 
   void CommandService::modify(const shape::Properties *props)
   {
+    (void)props; //silence -Wunused-parameter
   }
 
   void CommandService::attachInterface(shape::ITraceService* iface)

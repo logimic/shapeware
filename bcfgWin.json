@@ -1,0 +1,9 @@
+{
+  "generator": "Visual Studio 15 2017 Win64",
+  "parameters": [
+    "BUILD_TESTING:BOOL=true",
+    "LWS_WITH_SSL:BOOL=false",
+    "CMAKE_TOOLCHAIN_FILE=c:\\devel\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake",
+    "shape_DIR:PATH=./"
+  ]
+}

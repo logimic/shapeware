@@ -5,7 +5,7 @@ shape plug-ins
 
 - Git
 - Cmake
-- shape https://github.com/logimic/shape 
+- shape https://github.com/logimic/shape
 
 ### Windows
 
@@ -32,17 +32,22 @@ REST, and OAuth library The C++ REST...
 
 Install libcurl:
 
+```
 $ sudo apt-get install libcurl4-openssl-dev
+```
 
 ## Build
 
-```bash
-$ git clone https://github.com/logimic/shapeware.git
-$ cd shapeware
-$ py shape.py --build
-or
-$ build32.bat         #for Win x86
-$ build64.bat         #for Win x64
-$ ./buildMake.sh      #for Linux
-$ ./buildEclipse.sh   #for Linux Eclipse IDE
 ```
+$ git clone --recursive https://github.com/logimic/shapeware
+$ cd shapeware
+```
+
+Then run Python building sript:
+
+```
+$ python3 build.py                        #for Linux, Raspberry Pi
+$ py build.py                             #for Win
+```
+
+Building parameters are specified in **bcfgWin.json** and **bcfgLin.json** files consumed by the building script.

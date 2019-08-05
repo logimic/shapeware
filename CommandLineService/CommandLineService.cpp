@@ -52,6 +52,7 @@ namespace shape {
 
     void activate(const shape::Properties *props)
     {
+      (void)props; //silence -Wunused-parameter
       TRC_FUNCTION_ENTER("");
       TRC_INFORMATION(std::endl <<
         "******************************" << std::endl <<
@@ -59,6 +60,7 @@ namespace shape {
         "******************************"
       );
 
+      m_runThdFlg = true;
       m_thd = std::thread([&]() {
         runThd();
       });
@@ -76,6 +78,7 @@ namespace shape {
       );
 
       //std::cout << "joining CommandLineService thd ... ";
+      m_runThdFlg = false;
       if (m_thd.joinable()) {
         m_thd.join();
       }
@@ -169,6 +172,7 @@ namespace shape {
 
   void CommandLineService::modify(const shape::Properties *props)
   {
+    (void)props; //silence -Wunused-parameter
   }
 
   void CommandLineService::attachInterface(shape::ICommandService* iface)
