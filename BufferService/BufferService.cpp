@@ -191,14 +191,14 @@ namespace shape {
       std::unique_lock<std::mutex> lck(m_mux);
       m_queue.push(rec);
       
-      int retval = 0;
-      {
-        std::unique_lock<std::mutex> lck(m_mux);
-        m_queue.push(rec);
-        //retval = static_cast<uint8_t>(m_taskQueue.size());
-        m_pushed = true;
-      }
-      m_cond.notify_all();
+      //int retval = 0;
+      //{
+      //  std::unique_lock<std::mutex> lck(m_mux);
+      //  m_queue.push(rec);
+      //  //retval = static_cast<uint8_t>(m_taskQueue.size());
+      //  m_pushed = true;
+      //}
+      //m_cond.notify_all();
       //return retval;
       
       TRC_FUNCTION_LEAVE("")

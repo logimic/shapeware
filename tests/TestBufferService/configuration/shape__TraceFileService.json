@@ -1,9 +1,9 @@
 {
   "component": "shape::TraceFileService",
-  "instance": "shape::TraceFileService-startup",
+  "instance": "shape::TraceFileService-TestBufferService",
 
   "path": "",
-  "filename": "startup.txt",
+  "filename": "TestBufferService.txt",
 
   "VerbosityLevels": [
     {
