@@ -117,6 +117,11 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
+    void dump()
+    {
+      //TODO
+    }
+
     /// Worker thread function
     void worker()
     {
@@ -191,6 +196,8 @@ namespace shape {
       std::unique_lock<std::mutex> lck(m_mux);
       m_queue.push(rec);
       
+      //TODO check stale in front() and possibly pop it
+
       //int retval = 0;
       //{
       //  std::unique_lock<std::mutex> lck(m_mux);
@@ -452,6 +459,11 @@ namespace shape {
   void BufferService::stop()
   {
     m_imp->stop();
+  }
+
+  void BufferService::dump()
+  {
+    m_imp->dump();
   }
 
   bool BufferService::empty()
