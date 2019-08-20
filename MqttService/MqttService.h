@@ -14,9 +14,13 @@ namespace shape {
     MqttService();
     virtual ~MqttService();
     
-    void start(const std::string& clientId) override;
-    virtual void stop() override;
-    virtual bool isReady() const override;
+    void create(const std::string& clientId) override;
+    void connect() override;
+    void disconnect() override;
+    bool isReady() const override;
+    void subscribe(const std::string& topic) override;
+    void publish(const std::string& topic, const std::vector<uint8_t> & msg) override;
+    void publish(const std::string& topic, const std::string & msg) override;
 
     void registerMessageHandler(MqttMessageHandlerFunc hndl) override;
     void unregisterMessageHandler() override;
@@ -28,10 +32,6 @@ namespace shape {
     void unregisterOnSubscribeHandler() override;
     void registerOnDisconnectHandler(MqttOnDisconnectHandlerFunc hndl) override;
     void unregisterOnDisconnectHandler() override;
-
-    void subscribeTopic(const std::string& topic) override;
-    void sendMessage(const std::string& topic, const std::vector<uint8_t> & msg) override;
-    void sendMessage(const std::string& topic, const std::string & msg) override;
 
     //////////////
     void activate(const shape::Properties *props = 0);

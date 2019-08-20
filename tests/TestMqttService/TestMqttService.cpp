@@ -339,7 +339,8 @@ namespace shape {
   TEST_F(FixTestMqttService, Mqttc1Connect)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Mqttc1Connect");
-    mqttc1->start(client1);
+    mqttc1->create(client1);
+    mqttc1->connect();
     EXPECT_EQ(ON_CONNECT, mqttch1->fetchMessage(MILLIS_WAIT));
     EXPECT_TRUE(mqttc1->isReady());
   }
@@ -347,7 +348,8 @@ namespace shape {
   TEST_F(FixTestMqttService, Mqttc2Connect)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Mqttc2Connect");
-    mqttc2->start(client2);
+    mqttc2->create(client2);
+    mqttc2->connect();
     EXPECT_EQ(ON_CONNECT, mqttch2->fetchMessage(MILLIS_WAIT));
     EXPECT_TRUE(mqttc2->isReady());
   }
@@ -355,35 +357,51 @@ namespace shape {
   TEST_F(FixTestMqttService, Mqttc2Subscribe)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Mqttc2Subscribe");
-    mqttc2->subscribeTopic(topic);
+    mqttc2->subscribe(topic);
     EXPECT_EQ(ON_SUBSCRIBE, mqttch2->fetchMessage(MILLIS_WAIT));
   }
 
   TEST_F(FixTestMqttService, Mqttc1PublishMqttc2Receive)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Mqttc1PublishMqttc2Receive");
-    mqttc1->sendMessage(topic, TEST_MSG);
+    mqttc1->publish(topic, TEST_MSG);
     EXPECT_EQ(TEST_MSG, mqttch2->fetchMessage(MILLIS_WAIT));
   }
 
   TEST_F(FixTestMqttService, Mqttc1Disconnect)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Mqttc1Disconnect");
-    mqttc1->stop();
-    EXPECT_EQ(ON_DISCONNECT, mqttch2->fetchMessage(MILLIS_WAIT));
-  }
-
-  TEST_F(FixTestMqttService, Mqttc1SendWhileDisconnected)
-  {
-    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Mqttc1SendWhileDisconnected");
+    mqttc1->disconnect();
+    EXPECT_EQ(ON_DISCONNECT, mqttch1->fetchMessage(MILLIS_WAIT));
     EXPECT_FALSE(mqttc1->isReady());
-    mqttc1->sendMessage(topic, TEST_MSG1);
-    
-    mqttc1->start(client1);
-    EXPECT_EQ(ON_CONNECT, mqttch1->fetchMessage(MILLIS_WAIT));
-    EXPECT_TRUE(mqttc1->isReady());
-
-    EXPECT_EQ(TEST_MSG1, mqttch2->fetchMessage(MILLIS_WAIT));
   }
+
+  //TEST_F(FixTestMqttService, Mqttc1PublishMqttc2Reconnected)
+  //{
+  //  TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Mqttc1PublishMqttc2Receive");
+  //  mqttc1->publish(topic, TEST_MSG1);
+
+  //  mqttc2->connect();
+  //  EXPECT_EQ(ON_CONNECT, mqttch2->fetchMessage(MILLIS_WAIT));
+  //  EXPECT_TRUE(mqttc2->isReady());
+
+  //  mqttc2->subscribe(topic);
+  //  EXPECT_EQ(ON_SUBSCRIBE, mqttch2->fetchMessage(MILLIS_WAIT));
+
+  //  EXPECT_EQ(TEST_MSG1, mqttch2->fetchMessage(MILLIS_WAIT));
+  //}
+
+  //TEST_F(FixTestMqttService, Mqttc1SendWhileDisconnected)
+  //{
+  //  TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Mqttc1SendWhileDisconnected");
+  //  EXPECT_FALSE(mqttc1->isReady());
+  //  mqttc1->connect();
+  //  mqttc1->publish(topic, TEST_MSG1);
+  //  EXPECT_FALSE(mqttc1->isReady());
+  //  EXPECT_EQ(ON_CONNECT, mqttch1->fetchMessage(MILLIS_WAIT));
+  //  EXPECT_TRUE(mqttc1->isReady());
+
+  //  EXPECT_EQ(TEST_MSG1, mqttch2->fetchMessage(MILLIS_WAIT));
+  //}
 
 }

@@ -93,7 +93,7 @@ namespace shape {
     std::condition_variable m_connectionVariable;
 
     std::promise<bool> m_disconnect_promise;
-    std::future<bool> m_disconnect_future = m_disconnect_promise.get_future();
+    //std::future<bool> m_disconnect_future = m_disconnect_promise.get_future();
 
   public:
     //------------------------
@@ -114,71 +114,17 @@ namespace shape {
     /////////////////////////
 
     //------------------------
-    void start(const std::string& clientId)
+    void create(const std::string& clientId)
     {
       TRC_FUNCTION_ENTER(PAR(clientId));
 
-      m_mqttClientId = clientId;
-
-      m_messageQueue = shape_new TaskQueue<std::pair<std::string, std::vector<uint8_t>>>([&](std::pair<std::string, std::vector<uint8_t>> msg ) {
-        sendTo(msg.first, msg.second);
-      });
-
-      //typedef std::function<bool(const Record &)> ProcessFunc;
-
-      //m_iBufferService->registerProcessFunc([&](const IBufferService::Record & msg) {
-      //  return sendTo(msg.address, msg.content);
-      //});
-
-      // init connection options
-      m_create_opts.sendWhileDisconnected = 1;
-
-      // init connection options
-      m_conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
-      m_conn_opts.cleansession = 1;
-      m_conn_opts.connectTimeout = m_mqttConnectTimeout;
-      m_conn_opts.username = m_mqttUser.c_str();
-      m_conn_opts.password = m_mqttPassword.c_str();
-      m_conn_opts.onSuccess = s_onConnect;
-      m_conn_opts.onFailure = s_onConnectFailure;
-      m_conn_opts.context = this;
-
-      // init ssl options if required
-      if (m_mqttEnabledSSL) {
-        m_ssl_opts.enableServerCertAuth = true;
-        if (!m_trustStore.empty()) m_ssl_opts.trustStore = m_trustStore.c_str();
-        if (!m_keyStore.empty()) m_ssl_opts.keyStore = m_keyStore.c_str();
-        if (!m_privateKey.empty()) m_ssl_opts.privateKey = m_privateKey.c_str();
-        if (!m_privateKeyPassword.empty()) m_ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
-        if (!m_enabledCipherSuites.empty()) m_ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
-        m_ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
-        m_conn_opts.ssl = &m_ssl_opts;
+      if (nullptr != m_client) {
+        THROW_EXC_TRC_WAR(std::logic_error, PAR(clientId) << " already created. Was IMqttService::create(clientId) called ealrlier?" );
       }
 
-      // init subscription options
-      m_subs_opts.onSuccess = s_onSubscribe;
-      m_subs_opts.onFailure = s_onSubscribeFailure;
-      m_subs_opts.context = this;
+      m_mqttClientId = clientId;
 
-      // init send options
-      m_send_opts.onSuccess = s_onSend;
-      m_send_opts.onFailure = s_onSendFailure;
-      m_send_opts.context = this;
-
-      // init disconnect options
-      m_disc_opts.onSuccess = s_onDisconnect;
-      m_disc_opts.onFailure = s_onDisconnectFailure;
-      m_disc_opts.context = this;
-
-
-      // create client
       int retval;
-
-      //if ((retval = MQTTAsync_create(&m_client, m_mqttBrokerAddr.c_str(),
-      //  m_mqttClientId.c_str(), m_mqttPersistence, NULL)) != MQTTASYNC_SUCCESS) {
-      //  THROW_EXC_TRC_WAR(std::logic_error, "MQTTClient_create() failed: " << PAR(retval));
-      //}
-
       if ((retval = MQTTAsync_createWithOptions(&m_client, m_mqttBrokerAddr.c_str(),
         m_mqttClientId.c_str(), m_mqttPersistence, NULL, &m_create_opts)) != MQTTASYNC_SUCCESS) {
         THROW_EXC_TRC_WAR(std::logic_error, "MQTTClient_create() failed: " << PAR(retval));
@@ -189,17 +135,39 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, "MQTTClient_setCallbacks() failed: " << PAR(retval));
       }
 
-      TRC_INFORMATION("daemon-MQTT-protocol started - trying to connect broker: " << m_mqttBrokerAddr);
-
-      connect();
-
       TRC_FUNCTION_LEAVE("");
     }
 
     //------------------------
-    void stop()
+    void connect()
     {
       TRC_FUNCTION_ENTER("");
+
+      if (nullptr == m_client) {
+        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
+      }
+
+      m_stopAutoConnect = false;
+      m_connected = false;
+      m_subscribed = false;
+
+      if (m_connectThread.joinable())
+        m_connectThread.join();
+
+      m_connectThread = std::thread([this]() { this->connectThread(); });
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    //------------------------
+    void disconnect()
+    {
+      TRC_FUNCTION_ENTER("");
+
+      if (nullptr == m_client) {
+        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
+      }
+
+      std::future<bool> disconnect_future = m_disconnect_promise.get_future();
 
       ///stop possibly running connect thread
       m_stopAutoConnect = true;
@@ -212,18 +180,12 @@ namespace shape {
         TRC_WARNING("Failed to start disconnect: " << PAR(retval));
       }
 
-      //wait for async disconnect
       std::chrono::milliseconds span(5000);
-      if (m_disconnect_future.wait_for(span) == std::future_status::timeout) {
+      if (disconnect_future.wait_for(span) == std::future_status::timeout) {
         TRC_WARNING("Timeout to wait disconnect");
       }
 
-      MQTTAsync_setCallbacks(m_client, nullptr, nullptr, nullptr, nullptr);
-      MQTTAsync_destroy(&m_client);
-     
-      delete m_messageQueue;
-
-      TRC_INFORMATION("daemon-MQTT-protocol stopped");
+      TRC_INFORMATION("MQTT disconnected");
 
       TRC_FUNCTION_LEAVE("");
     }
@@ -303,15 +265,19 @@ namespace shape {
       TRC_FUNCTION_LEAVE("")
     }
 
-    void subscribeTopic(const std::string& topic)
+    void subscribe(const std::string& topic)
     {
       TRC_FUNCTION_ENTER(PAR(topic));
+
+      if (nullptr == m_client) {
+        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
+      }
 
       //TODO handler according topic
       {
         std::unique_lock<std::mutex> lck(m_connectionMutex);
         if (m_connected) {
-          subscribe(topic);
+          subscribeTopic(topic);
         }
         else {
           TRC_INFORMATION("Mqtt not connected => schedule to subscribe when connection ready: " << PAR(topic));
@@ -321,33 +287,26 @@ namespace shape {
       TRC_FUNCTION_LEAVE("")
     }
 
-    void sendMessage(const std::string& topic, const std::vector<uint8_t> & msg)
+    void publish(const std::string& topic, const std::vector<uint8_t> & msg)
     {
+      if (nullptr == m_client) {
+        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
+      }
+
       m_messageQueue->pushToQueue(std::make_pair(topic, msg));
       //m_iBufferService->push(IBufferService::Record(topic, msg));
     }
 
-    void sendMessage(const std::string& topic, const std::string & msg)
+    void publish(const std::string& topic, const std::string & msg)
     {
+      if (nullptr == m_client) {
+        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
+      }
+
       m_messageQueue->pushToQueue(std::make_pair(topic, std::vector<uint8_t>(msg.data(), msg.data() + msg.size())));
       //m_iBufferService->push(IBufferService::Record(topic, msg));
     }
     
-    /////////////////////
-    //------------------------
-    void handleMessageFromMqtt(const std::string & topic, const ustring& message)
-    {
-      TRC_DEBUG("==================================" << std::endl <<
-        "Received from MQTT: " << std::endl << MEM_HEX_CHAR(message.data(), message.size()));
-
-      if (m_mqttMessageHandlerFunc) {
-        m_mqttMessageHandlerFunc(topic, std::vector<uint8_t>(message.data(), message.data() + message.size()));
-      }
-      if(m_mqttMessageStrHandlerFunc) {
-        m_mqttMessageStrHandlerFunc(topic, std::string((char*)message.data(), message.size()));
-      }
-    }
-
     ///////////////////////
     // connection functions
     ///////////////////////
@@ -381,23 +340,6 @@ namespace shape {
       }
       TRC_FUNCTION_LEAVE("");
     }
-
-    //------------------------
-    void connect()
-    {
-      TRC_FUNCTION_ENTER("");
-
-      m_stopAutoConnect = false;
-      m_connected = false;
-      m_subscribed = false;
-
-      if (m_connectThread.joinable())
-        m_connectThread.join();
-
-      m_connectThread = std::thread([this]() { this->connectThread(); });
-      TRC_FUNCTION_LEAVE("");
-    }
-
 
     //----------------------------
     // connection succes callback
@@ -441,10 +383,10 @@ namespace shape {
         m_mqttOnConnectHandlerFunc();
       }
 
-      if (!m_topicToSubscribe.empty()) {
-        TRC_DEBUG("Subscribing scheduled topic");
-        subscribe(m_topicToSubscribe);
-      }
+      //if (!m_topicToSubscribe.empty()) {
+      //  TRC_DEBUG("Subscribing scheduled topic");
+      //  subscribeTopic(m_topicToSubscribe);
+      //}
       TRC_FUNCTION_LEAVE("");
     }
 
@@ -473,7 +415,7 @@ namespace shape {
     // subscribe functions
     ///////////////////////
 
-    void subscribe(const std::string& topic)
+    void subscribeTopic(const std::string& topic)
     {
       TRC_FUNCTION_ENTER(PAR(topic));
       int retval;
@@ -564,7 +506,7 @@ namespace shape {
 
       bool bretval = false;
 
-      if (m_connected) {
+      //if (m_connected) {
 
         int retval;
         MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
@@ -587,10 +529,10 @@ namespace shape {
           //  m_iBufferService->push(shape::IBufferService::Record(topic, msg));
           //}
         }
-      }
-      else {
-        TRC_WARNING("Cannot send to MQTT: connection lost");
-      }
+      //}
+      //else {
+      //  TRC_WARNING("Cannot send to MQTT: connection lost");
+      //}
       return bretval;
       TRC_FUNCTION_LEAVE("");
     }
@@ -651,7 +593,6 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
-
     /////////////////////
     // event callback functions
     /////////////////////
@@ -692,12 +633,25 @@ namespace shape {
       size_t sz = m_topicToSubscribe.size();
       if (m_topicToSubscribe[--sz] == '#') {
         if (0 == m_topicToSubscribe.compare(0, sz, topic, 0, sz))
-          handleMessageFromMqtt(topic, msg);
+          handleMessage(topic, msg);
       }
       else if (0 == m_topicToSubscribe.compare(topic))
-        handleMessageFromMqtt(topic, msg);
+        handleMessage(topic, msg);
       TRC_FUNCTION_LEAVE("");
       return 1;
+    }
+
+    void handleMessage(const std::string & topic, const ustring& message)
+    {
+      TRC_DEBUG("==================================" << std::endl <<
+        "Received from MQTT: " << std::endl << MEM_HEX_CHAR(message.data(), message.size()));
+
+      if (m_mqttMessageHandlerFunc) {
+        m_mqttMessageHandlerFunc(topic, std::vector<uint8_t>(message.data(), message.data() + message.size()));
+      }
+      if (m_mqttMessageStrHandlerFunc) {
+        m_mqttMessageStrHandlerFunc(topic, std::string((char*)message.data(), message.size()));
+      }
     }
 
     //------------------------
@@ -728,7 +682,53 @@ namespace shape {
 
       modify(props);
 
-      //m_impl->start();
+      m_messageQueue = shape_new TaskQueue<std::pair<std::string, std::vector<uint8_t>>>([&](std::pair<std::string, std::vector<uint8_t>> msg) {
+        sendTo(msg.first, msg.second);
+      });
+
+      //m_iBufferService->registerProcessFunc([&](const IBufferService::Record & msg) {
+      //  return sendTo(msg.address, msg.content);
+      //});
+
+      // init connection options
+      m_create_opts.sendWhileDisconnected = 1;
+
+      // init connection options
+      m_conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
+      m_conn_opts.cleansession = 1;
+      m_conn_opts.connectTimeout = m_mqttConnectTimeout;
+      m_conn_opts.username = m_mqttUser.c_str();
+      m_conn_opts.password = m_mqttPassword.c_str();
+      m_conn_opts.onSuccess = s_onConnect;
+      m_conn_opts.onFailure = s_onConnectFailure;
+      m_conn_opts.context = this;
+
+      // init ssl options if required
+      if (m_mqttEnabledSSL) {
+        m_ssl_opts.enableServerCertAuth = true;
+        if (!m_trustStore.empty()) m_ssl_opts.trustStore = m_trustStore.c_str();
+        if (!m_keyStore.empty()) m_ssl_opts.keyStore = m_keyStore.c_str();
+        if (!m_privateKey.empty()) m_ssl_opts.privateKey = m_privateKey.c_str();
+        if (!m_privateKeyPassword.empty()) m_ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
+        if (!m_enabledCipherSuites.empty()) m_ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
+        m_ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
+        m_conn_opts.ssl = &m_ssl_opts;
+      }
+
+      // init subscription options
+      m_subs_opts.onSuccess = s_onSubscribe;
+      m_subs_opts.onFailure = s_onSubscribeFailure;
+      m_subs_opts.context = this;
+
+      // init send options
+      m_send_opts.onSuccess = s_onSend;
+      m_send_opts.onFailure = s_onSendFailure;
+      m_send_opts.context = this;
+
+      // init disconnect options
+      m_disc_opts.onSuccess = s_onDisconnect;
+      m_disc_opts.onFailure = s_onDisconnectFailure;
+      m_disc_opts.context = this;
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -742,7 +742,12 @@ namespace shape {
         "******************************"
       );
 
-      stop();
+      disconnect();
+
+      MQTTAsync_setCallbacks(m_client, nullptr, nullptr, nullptr, nullptr);
+      MQTTAsync_destroy(&m_client);
+
+      delete m_messageQueue;
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -829,14 +834,19 @@ namespace shape {
     TRC_FUNCTION_LEAVE("")
   }
 
-  void MqttService::start(const std::string& clientId)
+  void MqttService::create(const std::string& clientId)
   {
-    m_impl->start(clientId);
+    m_impl->create(clientId);
   }
 
-  void MqttService::stop()
+  void MqttService::connect()
   {
-    m_impl->stop();
+    m_impl->connect();
+  }
+
+  void MqttService::disconnect()
+  {
+    m_impl->disconnect();
   }
 
   bool MqttService::isReady() const
@@ -894,19 +904,19 @@ namespace shape {
     m_impl->unregisterOnDisconnectHandler();
   }
 
-  void MqttService::subscribeTopic(const std::string& topic)
+  void MqttService::subscribe(const std::string& topic)
   {
-    m_impl->subscribeTopic(topic);
+    m_impl->subscribe(topic);
   }
 
-  void MqttService::sendMessage(const std::string& topic, const std::vector<uint8_t> & msg)
+  void MqttService::publish(const std::string& topic, const std::vector<uint8_t> & msg)
   {
-    m_impl->sendMessage(topic, msg);
+    m_impl->publish(topic, msg);
   }
 
-  void MqttService::sendMessage(const std::string& topic, const std::string & msg)
+  void MqttService::publish(const std::string& topic, const std::string & msg)
   {
-    m_impl->sendMessage(topic, msg);
+    m_impl->publish(topic, msg);
   }
 
   void MqttService::activate(const shape::Properties *props)
