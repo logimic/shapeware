@@ -10,8 +10,6 @@ message(STATUS "Found paho: ${paho_FOUND}")
 message(STATUS "PAHO_INCLUDE_DIRS: ${PAHO_INCLUDE_DIRS}")
 endif()
 
-FIND_PACKAGE(shapeware REQUIRED)
-
 set(COMPONENT shape::MqttService)
 DeclareShapeComponent(${COMPONENT})
 AddShapeProvidedInterface(${COMPONENT} shape::IMqttService)
