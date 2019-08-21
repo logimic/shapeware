@@ -82,12 +82,14 @@ namespace shape {
       if (!m_processFunc) {
         m_processFunc = func;
       }
+      start();
       TRC_FUNCTION_LEAVE("");
     }
 
     void unregisterProcessFunc()
     {
       TRC_FUNCTION_ENTER("");
+      stop();
       m_processFunc = nullptr;
       TRC_FUNCTION_LEAVE("");
     }
@@ -117,7 +119,12 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
-    void dump()
+    void suspend()
+    {
+      //TODO
+    }
+
+    void recover()
     {
       //TODO
     }
@@ -461,9 +468,14 @@ namespace shape {
     m_imp->stop();
   }
 
-  void BufferService::dump()
+  void BufferService::suspend()
   {
-    m_imp->dump();
+    m_imp->suspend();
+  }
+
+  void BufferService::recover()
+  {
+    m_imp->recover();
   }
 
   bool BufferService::empty()

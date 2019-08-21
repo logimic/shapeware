@@ -32,7 +32,9 @@ namespace shape {
     void unregisterProcessFunc() override;
     void start() override;
     void stop() override;
-    void dump() override;
+
+    void suspend() override;
+    void recover() override;
 
     bool empty() override;
     std::size_t size() const override;

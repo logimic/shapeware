@@ -3,7 +3,7 @@
   "instance": "MqttService1",
   "BrokerAddr": "broker.hivemq.com:1883",
   "Persistence": 1,
-  "Qos": 0,
+  "Qos": 1,
   "User": "",
   "Password": "",
   "EnabledSSL": false,

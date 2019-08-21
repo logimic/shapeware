@@ -33,7 +33,7 @@ class TaskQueue
 {
 public:
   /// Processing function type
-  typedef std::function<void(T)> ProcessTaskFunc;
+  typedef std::function<bool(T)> ProcessTaskFunc;
 
   /// \brief constructor
   /// \param [in] processTaskFunc processing function
@@ -43,7 +43,8 @@ public:
   TaskQueue(ProcessTaskFunc processTaskFunc)
     :m_processTaskFunc(processTaskFunc)
   {
-    m_taskPushed = false;
+    m_processTask = false;
+    m_suspended = true;
     m_runWorkerThread = true;
     m_workerThread = std::thread(&TaskQueue::worker, this);
   }
@@ -53,15 +54,8 @@ public:
   /// Stops working thread
   virtual ~TaskQueue()
   {
-    {
-      std::unique_lock<std::mutex> lck(m_taskQueueMutex);
-      m_runWorkerThread = false;
-      m_taskPushed = true;
-    }
-    m_conditionVariable.notify_all();
-
-    if (m_workerThread.joinable())
-      m_workerThread.join();
+    stopQueue();
+    m_processTaskFunc = nullptr;
   }
 
   /// \brief Push task to queue
@@ -77,7 +71,7 @@ public:
       std::unique_lock<std::mutex> lck(m_taskQueueMutex);
       m_taskQueue.push(task);
       retval = static_cast<uint8_t>(m_taskQueue.size());
-      m_taskPushed = true;
+      m_processTask = true;
     }
     m_conditionVariable.notify_all();
     return retval;
@@ -91,11 +85,35 @@ public:
     {
       std::unique_lock<std::mutex> lck(m_taskQueueMutex);
       m_runWorkerThread = false;
-      m_taskPushed = true;
+      m_processTask = true; // get out from waiting
+      m_suspended = false;
     }
+    m_conditionVariable.notify_all();
+
+    if (m_workerThread.joinable())
+      m_workerThread.join();
+  }
+
+  void suspend()
+  {
+    std::unique_lock<std::mutex> lck(m_taskQueueMutex);
+    m_suspended = true;
+  }
+
+  void recover()
+  {
+    std::unique_lock<std::mutex> lck(m_taskQueueMutex);
+    m_suspended = false;
+    m_processTask = true;
     m_conditionVariable.notify_all();
   }
 
+  bool isSuspended()
+  {
+    std::unique_lock<std::mutex> lck(m_taskQueueMutex);
+    return m_suspended;
+  }
+  
   /// \brief Get actual queue size
   /// \return queue size
   size_t size()
@@ -118,22 +136,26 @@ private:
 
       //wait for something in the queue
       lck.lock();
-      m_conditionVariable.wait(lck, [&] { return m_taskPushed; }); //lock is released in wait
+      m_conditionVariable.wait(lck, [&] { return m_processTask && !m_suspended; }); //lock is released in wait
       //lock is reacquired here
-      m_taskPushed = false;
+      m_processTask = false;
 
       while (m_runWorkerThread) {
-        if (!m_taskQueue.empty()) {
+        if (!m_taskQueue.empty() && !m_suspended) {
           auto task = m_taskQueue.front();
-          m_taskQueue.pop();
+          // m_taskQueue.pop();
           lck.unlock();
-          m_processTaskFunc(task);
+          bool processed = m_processTaskFunc(task);
+          lck.lock();
+          if (processed) {
+            m_taskQueue.pop();
+          }
         }
         else {
           lck.unlock();
           break;
         }
-        lck.lock(); //lock for next iteration
+        //lck.lock(); //lock for next iteration
       }
     }
   }
@@ -141,7 +163,8 @@ private:
   std::mutex m_taskQueueMutex;
   std::condition_variable m_conditionVariable;
   std::queue<T> m_taskQueue;
-  bool m_taskPushed;
+  bool m_processTask;
+  bool m_suspended;
   bool m_runWorkerThread;
   std::thread m_workerThread;
 

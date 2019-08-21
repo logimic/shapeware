@@ -53,7 +53,9 @@ namespace shape {
     virtual void unregisterProcessFunc() = 0;
     virtual void start() = 0;
     virtual void stop() = 0;
-    virtual void dump() = 0;
+
+    virtual void suspend() = 0;
+    virtual void recover() = 0;
 
     //Test whether buffer is empty
     virtual bool empty() = 0;

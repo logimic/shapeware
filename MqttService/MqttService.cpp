@@ -92,13 +92,12 @@ namespace shape {
     std::mutex m_connectionMutex;
     std::condition_variable m_connectionVariable;
 
-    std::promise<bool> m_disconnect_promise;
-    //std::future<bool> m_disconnect_future = m_disconnect_promise.get_future();
+    std::unique_ptr<std::promise<bool>> m_disconnect_promise_uptr;
 
   public:
     //------------------------
     Imp()
-      //: m_messageQueue(nullptr)
+      : m_messageQueue(nullptr)
     {
       m_connected = false;
     }
@@ -167,13 +166,16 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
-      std::future<bool> disconnect_future = m_disconnect_promise.get_future();
+      m_disconnect_promise_uptr.reset(shape_new std::promise<bool>());
+      std::future<bool> disconnect_future = m_disconnect_promise_uptr->get_future();
 
       ///stop possibly running connect thread
       m_stopAutoConnect = true;
       onConnectFailure(nullptr);
       if (m_connectThread.joinable())
         m_connectThread.join();
+
+      m_messageQueue->suspend();
 
       int retval;
       if ((retval = MQTTAsync_disconnect(m_client, &m_disc_opts)) != MQTTASYNC_SUCCESS) {
@@ -376,6 +378,7 @@ namespace shape {
       {
         std::unique_lock<std::mutex> lck(m_connectionMutex);
         m_connected = true;
+        m_messageQueue->recover();
         m_connectionVariable.notify_one();
       }
 
@@ -524,6 +527,8 @@ namespace shape {
         }
         else {
           TRC_WARNING("Failed to start sendMessage: " << PAR(retval));
+          m_messageQueue->suspend();
+
           //if (m_iBufferService) {
           //  TRC_INFORMATION("Buffering enabled => message stored to buffer");
           //  m_iBufferService->push(shape::IBufferService::Record(topic, msg));
@@ -557,6 +562,7 @@ namespace shape {
     void onSendFailure(MQTTAsync_failureData* response)
     {
       TRC_WARNING("Message sent failure: " << PAR(response->code));
+      m_messageQueue->suspend();
       //connect();
     }
 
@@ -573,7 +579,7 @@ namespace shape {
     void onDisconnect(MQTTAsync_successData* response)
     {
       TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : 0)));
-      m_disconnect_promise.set_value(true);
+      m_disconnect_promise_uptr->set_value(true);
 
       if (m_mqttOnDisconnectHandlerFunc) {
         m_mqttOnDisconnectHandlerFunc();
@@ -588,7 +594,7 @@ namespace shape {
     }
     void onDisconnectFailure(MQTTAsync_failureData* response) {
       TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : 0)));
-      m_disconnect_promise.set_value(false);
+      m_disconnect_promise_uptr->set_value(false);
 
       TRC_FUNCTION_LEAVE("");
     }
@@ -599,14 +605,14 @@ namespace shape {
 
     //------------------------
     // delivery confirmation  of (publish) message
-    static void s_delivered(void *context, MQTTAsync_token dt)
+    static void s_delivered(void *context, MQTTAsync_token token)
     {
-      ((MqttService::Imp*)context)->delivered(dt);
+      ((MqttService::Imp*)context)->delivered(token);
     }
-    void delivered(MQTTAsync_token dt)
+    void delivered(MQTTAsync_token token)
     {
-      TRC_FUNCTION_ENTER("Message delivery confirmed" << PAR(dt));
-      m_deliveredtoken = dt;
+      TRC_FUNCTION_ENTER("Message delivery confirmed: " << PAR(token));
+      m_deliveredtoken = token;
       TRC_FUNCTION_LEAVE("");
     }
 
@@ -682,8 +688,8 @@ namespace shape {
 
       modify(props);
 
-      m_messageQueue = shape_new TaskQueue<std::pair<std::string, std::vector<uint8_t>>>([&](std::pair<std::string, std::vector<uint8_t>> msg) {
-        sendTo(msg.first, msg.second);
+      m_messageQueue = shape_new TaskQueue<std::pair<std::string, std::vector<uint8_t>>>([&](std::pair<std::string, std::vector<uint8_t>> msg)->bool {
+        return sendTo(msg.first, msg.second);
       });
 
       //m_iBufferService->registerProcessFunc([&](const IBufferService::Record & msg) {
