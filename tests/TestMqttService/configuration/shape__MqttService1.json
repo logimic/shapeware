@@ -16,5 +16,7 @@
   "PrivateKey": "",
   "PrivateKeyPassword": "",
   "EnabledCipherSuites": "",
-  "EnableServerCertAuth": false
+  "EnableServerCertAuth": false,
+  "Buffered": true,
+  "BufferSize": 4
 }

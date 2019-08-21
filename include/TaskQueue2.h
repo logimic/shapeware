@@ -1,5 +1,5 @@
-/*
- * Copyright 2016-2017 MICRORISC s.r.o.
+/**
+ * Copyright 2019 Logimic,s.r.o.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ public:
     {
       std::unique_lock<std::mutex> lck(m_taskQueueMutex);
       m_taskQueue.push(task);
-      retval = static_cast<uint8_t>(m_taskQueue.size());
+      retval = (int)(m_taskQueue.size());
       m_processTask = true;
     }
     m_conditionVariable.notify_all();
@@ -126,6 +126,14 @@ public:
     return retval;
   }
 
+  T pop()
+  {
+    std::unique_lock<std::mutex> lck(m_taskQueueMutex);
+    auto task = m_taskQueue.front();
+    m_taskQueue.pop();
+    return task;
+  }
+
 private:
   /// Worker thread function
   void worker()
@@ -143,11 +151,10 @@ private:
       while (m_runWorkerThread) {
         if (!m_taskQueue.empty() && !m_suspended) {
           auto task = m_taskQueue.front();
-          // m_taskQueue.pop();
           lck.unlock();
           bool processed = m_processTaskFunc(task);
           lck.lock();
-          if (processed) {
+          if (processed) { //keep in queue if processed failure
             m_taskQueue.pop();
           }
         }
@@ -155,7 +162,6 @@ private:
           lck.unlock();
           break;
         }
-        //lck.lock(); //lock for next iteration
       }
     }
   }

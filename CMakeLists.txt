@@ -45,7 +45,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_subdirectory(include)
 #add_subdirectory(CppRestService)
-add_subdirectory(BufferService)
+#add_subdirectory(BufferService)
 add_subdirectory(CurlRestApiService)
 add_subdirectory(WebsocketCppService)
 add_subdirectory(WebsocketCppClientService)

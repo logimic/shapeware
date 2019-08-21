@@ -14,7 +14,6 @@ FIND_PACKAGE(shapeware REQUIRED)
 
 set(COMPONENT shape::MqttService)
 DeclareShapeComponent(${COMPONENT})
-#AddShapeProvidedInterface(${COMPONENT} shape::IMessageService)
 AddShapeProvidedInterface(${COMPONENT} shape::IMqttService)
 #AddShapeRequiredInterface(${COMPONENT} shape::IBufferService MANDATORY SINGLE)
 AddShapeRequiredInterface(${COMPONENT} shape::ILaunchService MANDATORY SINGLE)

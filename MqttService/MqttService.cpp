@@ -1,3 +1,19 @@
+/**
+ * Copyright 2019 Logimic,s.r.o.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #define IMessageService_EXPORTS
 
 #include "MqttService.h"
@@ -31,7 +47,7 @@ namespace shape {
   {
 
   private:
-    shape::IBufferService* m_iBufferService = nullptr;
+    shape::IBufferService* m_iBufferService = nullptr; // not used now
     shape::ILaunchService* m_iLaunchService = nullptr;
 
     //configuration
@@ -46,8 +62,10 @@ namespace shape {
     int m_mqttConnectTimeout = 5; //waits for accept from broker side
     int m_mqttMinReconnect = 1; //waits to reconnect when connection broken
     int m_mqttMaxReconnect = 64; //waits time *= 2 with every unsuccessful attempt up to this value 
+    bool m_buffered = false;
+    int m_bufferSize = 1024;
 
-                                 //The file in PEM format containing the public digital certificates trusted by the client.
+    //The file in PEM format containing the public digital certificates trusted by the client.
     std::string m_trustStore;
     //The file in PEM format containing the public certificate chain of the client. It may also include
     //the client's private key.
@@ -295,18 +313,18 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
-      m_messageQueue->pushToQueue(std::make_pair(topic, msg));
-      //m_iBufferService->push(IBufferService::Record(topic, msg));
+      int retval = m_messageQueue->pushToQueue(std::make_pair(topic, msg));
+      if (retval > m_bufferSize && m_buffered) {
+        auto task = m_messageQueue->pop();
+        TRC_WARNING("buffer overload => remove the oldest msg: " << std::endl <<
+          NAME_PAR(topic, task.first) << std::endl <<
+          std::string((char*)task.second.data(), task.second.size()));
+      }
     }
 
     void publish(const std::string& topic, const std::string & msg)
     {
-      if (nullptr == m_client) {
-        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
-      }
-
-      m_messageQueue->pushToQueue(std::make_pair(topic, std::vector<uint8_t>(msg.data(), msg.data() + msg.size())));
-      //m_iBufferService->push(IBufferService::Record(topic, msg));
+      publish(topic, std::vector<uint8_t>(msg.data(), msg.data() + msg.size()));
     }
     
     ///////////////////////
@@ -502,44 +520,37 @@ namespace shape {
     // send (publish) functions
     ///////////////////////
 
+    // process function of message queue
     bool sendTo(const std::string& topic, const std::vector<uint8_t> & msg)
     {
       TRC_FUNCTION_ENTER("Sending to MQTT: " << PAR(topic) << std::endl <<
         MEM_HEX_CHAR(msg.data(), msg.size()));
 
       bool bretval = false;
+      int retval;
+      MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
 
-      //if (m_connected) {
+      pubmsg.payload = (void*)msg.data();
+      pubmsg.payloadlen = (int)msg.size();
+      pubmsg.qos = m_mqttQos;
+      pubmsg.retained = 0;
 
-        int retval;
-        MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
+      m_deliveredtoken = 0;
 
-        pubmsg.payload = (void*)msg.data();
-        pubmsg.payloadlen = (int)msg.size();
-        pubmsg.qos = m_mqttQos;
-        pubmsg.retained = 0;
-
-        m_deliveredtoken = 0;
-
-        if ((retval = MQTTAsync_sendMessage(m_client, topic.c_str(), &pubmsg, &m_send_opts)) == MQTTASYNC_SUCCESS) {
-          bretval = true;
-          m_deliveredtoken = m_send_opts.token;
+      if ((retval = MQTTAsync_sendMessage(m_client, topic.c_str(), &pubmsg, &m_send_opts)) == MQTTASYNC_SUCCESS) {
+        bretval = true;
+        m_deliveredtoken = m_send_opts.token;
+      }
+      else {
+        TRC_WARNING("Failed to start sendMessage: " << PAR(retval));
+        m_messageQueue->suspend();
+        if (!m_buffered) {
+          bretval = true; // => pop anyway from queue
         }
-        else {
-          TRC_WARNING("Failed to start sendMessage: " << PAR(retval));
-          m_messageQueue->suspend();
+      }
 
-          //if (m_iBufferService) {
-          //  TRC_INFORMATION("Buffering enabled => message stored to buffer");
-          //  m_iBufferService->push(shape::IBufferService::Record(topic, msg));
-          //}
-        }
-      //}
-      //else {
-      //  TRC_WARNING("Cannot send to MQTT: connection lost");
-      //}
-      return bretval;
       TRC_FUNCTION_LEAVE("");
+      return bretval;
     }
 
     //------------------------
@@ -692,10 +703,6 @@ namespace shape {
         return sendTo(msg.first, msg.second);
       });
 
-      //m_iBufferService->registerProcessFunc([&](const IBufferService::Record & msg) {
-      //  return sendTo(msg.address, msg.content);
-      //});
-
       // init connection options
       m_create_opts.sendWhileDisconnected = 1;
 
@@ -780,6 +787,9 @@ namespace shape {
       props->getMemberAsInt("ConnectTimeout", m_mqttConnectTimeout);
       props->getMemberAsInt("MinReconnect", m_mqttMinReconnect);
       props->getMemberAsInt("MaxReconnect", m_mqttMaxReconnect);
+
+      props->getMemberAsBool("Buffered", m_buffered);
+      props->getMemberAsInt("BufferSize", m_bufferSize);
 
       std::string dataDir = m_iLaunchService->getDataDir();
       m_trustStore = dataDir + "/cert/" + m_trustStore;
