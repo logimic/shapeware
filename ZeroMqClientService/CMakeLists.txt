@@ -6,6 +6,10 @@ AddShapeProvidedInterface(${COMPONENT} shape::IZeroMqClientService)
 AddShapeRequiredInterface(${COMPONENT} shape::ITraceService MANDATORY MULTIPLE)
 ConfigureShapeComponent(${COMPONENT} COMPONENT_HXX)
 
+if (UNIX) 
+	set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+endif()
+
 find_package(ZeroMQ CONFIG REQUIRED)
 find_path(CPPZMQ_INCLUDE_DIR NAMES zmq.hpp)
 
