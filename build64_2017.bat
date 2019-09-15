@@ -18,7 +18,7 @@ set vcpkg=c:\\devel\\vcpkg\\scripts\\buildsystems\\vcpkg.cmake
 
 rem //launch cmake to generate build environment
 pushd %builddir%
-cmake -G "Visual Studio 15 2017 Win64" -DBUILD_TESTING:BOOL=true -DCMAKE_TOOLCHAIN_FILE=%vcpkg% -DLWS_WITH_SSL:BOOL=false -Dshape_DIR:PATH=%shape% %currentdir%
+cmake -G "Visual Studio 15 2017 Win64" -DBUILD_ZEROMQ:BOOL=true -DBUILD_TESTING:BOOL=true -DCMAKE_TOOLCHAIN_FILE=%vcpkg% -DLWS_WITH_SSL:BOOL=false -Dshape_DIR:PATH=%shape% %currentdir%
 popd
 
 rem //build from generated build environment

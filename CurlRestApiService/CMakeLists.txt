@@ -2,32 +2,6 @@ project(CurlRestApiService)
 
 find_package(CURL REQUIRED)
 
-message(STATUS "CURL_LIBRARIES: ${CURL_LIBRARIES}")
-
-# workaround to cope vcpkg curl error https://github.com/Microsoft/vcpkg/issues/1909
-if (WIN32)
-list(LENGTH CURL_LIBRARY CURL_LIBRARY_LENGTH)
-if (CURL_LIBRARY_LENGTH EQUAL 1)
-    set(CURL_LIBRARY_DEBUG_LIB   ${CURL_LIBRARY})
-    get_filename_component(CURL_LIBRARY_DEBUG_LIB_PATH ${CURL_LIBRARY_DEBUG_LIB} DIRECTORY)
-    set(CURL_LIBRARY_RELEASE_LIB_ ${CURL_LIBRARY_DEBUG_LIB_PATH}/../../lib/libcurl.lib)
-    get_filename_component(CURL_LIBRARY_RELEASE_LIB ${CURL_LIBRARY_RELEASE_LIB_} REALPATH)
-    unset(CURL_LIBRARY CACHE)
-    unset(CURL_LIBRARY)
-    unset(CURL_LIBRARIES  CACHE)
-    unset(CURL_LIBRARIES)
-    set(CURL_LIBRARY "debug;${CURL_LIBRARY_DEBUG_LIB};optimized;${CURL_LIBRARY_RELEASE_LIB}")
-    set(CURL_LIBRARIES ${CURL_LIBRARY})
-endif()
-endif()
-#]]
-message(STATUS "CURL_LIBRARIES: ${CURL_LIBRARIES}")
-message(STATUS "CURL_LIBRARY_DEBUG_LIB_PATH: ${CURL_LIBRARY_DEBUG_LIB_PATH}")
-message(STATUS "CURL_LIBRARY_RELEASE_LIB_: ${CURL_LIBRARY_RELEASE_LIB_}")
-message(STATUS "CURL_LIBRARY_DEBUG_LIB: ${CURL_LIBRARY_DEBUG_LIB}")
-message(STATUS "CURL_LIBRARY_RELEASE_LIB: ${CURL_LIBRARY_RELEASE_LIB}")
-
-
 set(COMPONENT shape::CurlRestApiService)
 DeclareShapeComponent(${COMPONENT})
 AddShapeProvidedInterface(${COMPONENT} shape::IRestApiService)

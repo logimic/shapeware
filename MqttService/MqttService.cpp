@@ -35,7 +35,7 @@
 #ifdef TRC_CHANNEL
 #undef TRC_CHANNEL
 #endif
-#define TRC_CHANNEL 43
+#define TRC_CHANNEL 0
 
 TRC_INIT_MODULE(shape::MqttService);
 
