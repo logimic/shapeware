@@ -16,6 +16,7 @@
 
 #include "ZeroMqClientService.h"
 #include "Trace.h"
+#include <thread>
 #include <zmq.hpp>
 
 #include "shape__ZeroMqClientService.hxx"
@@ -40,9 +41,6 @@ namespace shape {
 
     std::thread m_thd;
     bool m_runListen = true;
-    std::condition_variable m_connectedCondition;
-    mutable std::mutex m_connectedMux;
-    bool m_connected = false;
 
     MessageHandlerFunc m_messageHandlerFunc;
     MessageStrHandlerFunc m_messageStrHandlerFunc;
@@ -124,7 +122,8 @@ namespace shape {
       TRC_FUNCTION_ENTER("");
 
       zmq::message_t request(msg.data(), msg.data() + msg.size());
-      m_socket->send(request, zmq::send_flags::none);
+      //m_socket->send(request, zmq::send_flags::none);
+      m_socket->send(&request, 0);
 
       TRC_FUNCTION_LEAVE("");
     }
@@ -134,7 +133,8 @@ namespace shape {
       TRC_FUNCTION_ENTER("");
 
       zmq::message_t request(msg.data(), msg.data() + msg.size());
-      m_socket->send(request, zmq::send_flags::none);
+      //m_socket->send(request, zmq::send_flags::none);
+      m_socket->send(&request, 0);
 
       TRC_FUNCTION_LEAVE("");
     }
@@ -208,7 +208,8 @@ namespace shape {
       TRC_FUNCTION_ENTER("");
       while (m_runListen) {
         zmq::message_t reply;
-        m_socket->recv(reply, zmq::recv_flags::none);
+        //m_socket->recv(reply, zmq::recv_flags::none);
+        m_socket->recv(&reply, 0);
       }
       TRC_FUNCTION_LEAVE("")
     }

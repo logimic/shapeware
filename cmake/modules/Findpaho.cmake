@@ -22,6 +22,8 @@
 #    C:\Program Files\paho\bin
 #    It is used by this finder and the system to find paho*.dll 
 
+message(STATUS "finding paho")
+
 find_path(PAHO_ROOT_DIR
     include/MQTTClient.h
 )

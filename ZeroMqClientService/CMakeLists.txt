@@ -6,11 +6,13 @@ AddShapeProvidedInterface(${COMPONENT} shape::IZeroMqClientService)
 AddShapeRequiredInterface(${COMPONENT} shape::ITraceService MANDATORY MULTIPLE)
 ConfigureShapeComponent(${COMPONENT} COMPONENT_HXX)
 
-if (UNIX) 
-	set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
+if(WIN32) 
+    find_package(ZeroMQ CONFIG REQUIRED)
+else()
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/modules")
+    find_package(ZeroMQ REQUIRED)
 endif()
 
-find_package(ZeroMQ CONFIG REQUIRED)
 find_path(CPPZMQ_INCLUDE_DIR NAMES zmq.hpp)
 
 file(GLOB_RECURSE _HDRFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h  ${COMPONENT_HXX})
@@ -30,6 +32,7 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE libzmq)
+#target_link_libraries(${PROJECT_NAME} PRIVATE libzmq)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${ZeroMQ_LIBRARY})
 
 DeployShapeComponent(${PROJECT_NAME})
