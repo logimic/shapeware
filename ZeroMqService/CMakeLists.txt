@@ -13,7 +13,7 @@ else()
     find_package(ZeroMQ REQUIRED)
 endif()
 
-find_path(CPPZMQ_INCLUDE_DIR NAMES zmq.hpp)
+#find_path(CPPZMQ_INCLUDE_DIR NAMES zmq.hpp)
 
 file(GLOB_RECURSE _HDRFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.h  ${COMPONENT_HXX})
 file(GLOB_RECURSE _SRCFILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
@@ -23,8 +23,7 @@ source_group("Source Files" FILES ${_SRCFILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${CPPZMQ_INCLUDE_DIR})
-message(STATUS "ZeroMQ_STATIC_LIBRARY: ${ZeroMQ_STATIC_LIBRARY}")
+include_directories (${CMAKE_SOURCE_DIR}/external/cppzmq)
 
 if(SHAPE_STATIC_LIBS)
     add_library(${PROJECT_NAME} STATIC ${_HDRFILES} ${_SRCFILES})
