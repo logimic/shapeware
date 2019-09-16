@@ -1,8 +1,8 @@
-project(ZeroMqClientService)
+project(ZeroMqService)
 
-set(COMPONENT shape::ZeroMqClientService)
+set(COMPONENT shape::ZeroMqService)
 DeclareShapeComponent(${COMPONENT})
-AddShapeProvidedInterface(${COMPONENT} shape::IZeroMqClientService)
+AddShapeProvidedInterface(${COMPONENT} shape::IZeroMqService)
 AddShapeRequiredInterface(${COMPONENT} shape::ITraceService MANDATORY MULTIPLE)
 ConfigureShapeComponent(${COMPONENT} COMPONENT_HXX)
 
@@ -32,7 +32,10 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-#target_link_libraries(${PROJECT_NAME} PRIVATE libzmq)
-target_link_libraries(${PROJECT_NAME} PRIVATE ${ZeroMQ_LIBRARY})
+if(WIN32) 
+    target_link_libraries(${PROJECT_NAME} PRIVATE libzmq)
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${ZeroMQ_LIBRARY})
+endif()
 
 DeployShapeComponent(${PROJECT_NAME})

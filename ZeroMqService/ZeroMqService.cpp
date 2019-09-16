@@ -14,23 +14,23 @@
 * limitations under the License.
 */
 
-#include "ZeroMqClientService.h"
+#include "ZeroMqService.h"
 #include "Trace.h"
 #include <thread>
 #include <zmq.hpp>
 
-#include "shape__ZeroMqClientService.hxx"
+#include "shape__ZeroMqService.hxx"
 
 #ifdef TRC_CHANNEL
 #undef TRC_CHANNEL
 #endif
 #define TRC_CHANNEL 0
 
-TRC_INIT_MODULE(shape::ZeroMqClientService);
+TRC_INIT_MODULE(shape::ZeroMqService);
 
 namespace shape {
 
-  class ZeroMqClientService::Imp
+  class ZeroMqService::Imp
   {
   private:
     zmq::context_t m_context;
@@ -73,7 +73,7 @@ namespace shape {
 
       std::unique_lock<std::mutex> lck(m_connectedMux);
       m_connected = false;
-      //std::cout << ">>> ZeroMqClientService on_fail" << std::endl;
+      //std::cout << ">>> ZeroMqService on_fail" << std::endl;
       m_server = m_client.get_con_from_hdl(hdl)->get_response_header("Server");
       m_error_reason = m_client.get_con_from_hdl(hdl)->get_ec().message();
       m_connectedCondition.notify_all();
@@ -96,7 +96,7 @@ namespace shape {
         << "), close reason: " << con->get_remote_close_reason();
       m_error_reason = s.str();
 
-      //std::cout << ">>> ZeroMqClientService CloseRemote" << std::endl;
+      //std::cout << ">>> ZeroMqService CloseRemote" << std::endl;
       m_connectedCondition.notify_all();
 
       if (m_closeHandlerFunc) {
@@ -220,7 +220,7 @@ namespace shape {
       TRC_FUNCTION_ENTER("");
       TRC_INFORMATION(std::endl <<
         "******************************" << std::endl <<
-        "ZeroMqClientService instance activate" << std::endl <<
+        "ZeroMqService instance activate" << std::endl <<
         "******************************"
       );
 
@@ -237,7 +237,7 @@ namespace shape {
       TRC_FUNCTION_ENTER("");
       TRC_INFORMATION(std::endl <<
         "******************************" << std::endl <<
-        "ZeroMqClientService instance deactivate" << std::endl <<
+        "ZeroMqService instance deactivate" << std::endl <<
         "******************************"
       );
 
@@ -253,102 +253,102 @@ namespace shape {
   };
 
   ///////////////////////////////////////
-  ZeroMqClientService::ZeroMqClientService()
+  ZeroMqService::ZeroMqService()
   {
     m_imp = shape_new Imp();
   }
 
-  ZeroMqClientService::~ZeroMqClientService()
+  ZeroMqService::~ZeroMqService()
   {
     delete m_imp;
   }
 
-  void ZeroMqClientService::sendMessage(const std::vector<uint8_t> & msg)
+  void ZeroMqService::sendMessage(const std::vector<uint8_t> & msg)
   {
     m_imp->sendMessage(msg);
   }
 
-  void ZeroMqClientService::sendMessage(const std::string & msg)
+  void ZeroMqService::sendMessage(const std::string & msg)
   {
     m_imp->sendMessage(msg);
   }
 
-  void ZeroMqClientService::connect(const std::string & uri)
+  void ZeroMqService::connect(const std::string & uri)
   {
     m_imp->connect(uri);
   }
 
-  void ZeroMqClientService::close()
+  void ZeroMqService::close()
   {
     m_imp->close();
   }
 
-  bool ZeroMqClientService::isConnected() const
+  bool ZeroMqService::isConnected() const
   {
     return m_imp->isConnected();
   }
 
-  void ZeroMqClientService::registerMessageHandler(MessageHandlerFunc hndl)
+  void ZeroMqService::registerMessageHandler(MessageHandlerFunc hndl)
   {
     m_imp->registerMessageHandler(hndl);
   }
 
-  void ZeroMqClientService::registerMessageStrHandler(MessageStrHandlerFunc hndl)
+  void ZeroMqService::registerMessageStrHandler(MessageStrHandlerFunc hndl)
   {
     m_imp->registerMessageStrHandler(hndl);
   }
 
-  void ZeroMqClientService::registerOpenHandler(OpenHandlerFunc hndl)
+  void ZeroMqService::registerOpenHandler(OpenHandlerFunc hndl)
   {
     m_imp->registerOpenHandler(hndl);
   }
 
-  void ZeroMqClientService::registerCloseHandler(CloseHandlerFunc hndl)
+  void ZeroMqService::registerCloseHandler(CloseHandlerFunc hndl)
   {
     m_imp->registerCloseHandler(hndl);
   }
 
-  void ZeroMqClientService::unregisterMessageHandler()
+  void ZeroMqService::unregisterMessageHandler()
   {
     m_imp->unregisterMessageHandler();
   }
 
-  void ZeroMqClientService::unregisterMessageStrHandler()
+  void ZeroMqService::unregisterMessageStrHandler()
   {
     m_imp->unregisterMessageStrHandler();
   }
 
-  void ZeroMqClientService::unregisterOpenHandler()
+  void ZeroMqService::unregisterOpenHandler()
   {
     m_imp->unregisterOpenHandler();
   }
 
-  void ZeroMqClientService::unregisterCloseHandler()
+  void ZeroMqService::unregisterCloseHandler()
   {
     m_imp->unregisterCloseHandler();
   }
 
-  void ZeroMqClientService::activate(const shape::Properties *props)
+  void ZeroMqService::activate(const shape::Properties *props)
   {
     m_imp->activate(props);
   }
 
-  void ZeroMqClientService::deactivate()
+  void ZeroMqService::deactivate()
   {
     m_imp->deactivate();
   }
 
-  void ZeroMqClientService::modify(const shape::Properties *props)
+  void ZeroMqService::modify(const shape::Properties *props)
   {
     (void)props; //silence -Wunused-parameter
   }
 
-  void ZeroMqClientService::attachInterface(shape::ITraceService* iface)
+  void ZeroMqService::attachInterface(shape::ITraceService* iface)
   {
     shape::Tracer::get().addTracerService(iface);
   }
 
-  void ZeroMqClientService::detachInterface(shape::ITraceService* iface)
+  void ZeroMqService::detachInterface(shape::ITraceService* iface)
   {
     shape::Tracer::get().removeTracerService(iface);
   }

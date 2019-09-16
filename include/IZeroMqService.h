@@ -22,7 +22,7 @@
 #include <functional>
 
 namespace shape {
-  class IZeroMqClientService
+  class IZeroMqService
   {
   public:
     /// Incoming message handler functional type
@@ -60,7 +60,7 @@ namespace shape {
     virtual void close() = 0;
     virtual bool isConnected() const = 0;
 
-    inline virtual ~IZeroMqClientService() {};
+    inline virtual ~IZeroMqService() {};
 
   };
 }

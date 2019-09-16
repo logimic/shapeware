@@ -56,7 +56,7 @@ add_subdirectory(CommandLineService)
 add_subdirectory(startup)
 
 if(${BUILD_ZEROMQ})
-  add_subdirectory(ZeroMqClientService)
+  add_subdirectory(ZeroMqService)
 endif()
 
 if(${BUILD_TESTING})

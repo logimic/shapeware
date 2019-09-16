@@ -16,18 +16,18 @@
 
 #pragma once
 
-#include "IZeroMqClientService.h"
+#include "IZeroMqService.h"
 #include "ShapeProperties.h"
 #include "ITraceService.h"
 #include <string>
 #include <functional>
 
 namespace shape {
-  class ZeroMqClientService : public IZeroMqClientService
+  class ZeroMqService : public IZeroMqService
   {
   public:
-    ZeroMqClientService();
-    virtual ~ZeroMqClientService();
+    ZeroMqService();
+    virtual ~ZeroMqService();
 
     void registerMessageHandler(MessageHandlerFunc hndl) override;
     void registerMessageStrHandler(MessageStrHandlerFunc hndl) override;
