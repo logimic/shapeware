@@ -1,0 +1,6 @@
+{
+  "component": "shape::ZeroMqService",
+  "instance": "ZeroMqService-req",
+  "socketAdr": "tcp://localhost:5555",
+  "socketType": "req"
+}

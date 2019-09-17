@@ -1,5 +1,5 @@
 /**
-* Copyright 2018 Logimic,s.r.o.
+* Copyright 2019 Logimic,s.r.o.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -32,81 +32,50 @@ namespace shape {
 
   class ZeroMqService::Imp
   {
+  
+    //TODO just req, rep supported for now
+    class SocketTypeConvertTable
+    {
+    public:
+      static const std::vector<std::pair<zmq::socket_type, std::string>>& table()
+      {
+        static std::vector <std::pair<zmq::socket_type, std::string>> table = {
+          { zmq::socket_type::req, "req" },
+          { zmq::socket_type::rep, "rep" },
+        };
+        return table;
+      }
+      static zmq::socket_type defaultEnum()
+      {
+        return zmq::socket_type::req;
+      }
+      static const std::string& defaultStr()
+      {
+        static std::string u("Undef");
+        return u;
+      }
+    };
+
+    typedef shape::EnumStringConvertor<zmq::socket_type, SocketTypeConvertTable> SocketTypeConvert;
+
+  
+  
   private:
     zmq::context_t m_context;
     std::unique_ptr<zmq::socket_t> m_socket;
-    std::string m_uri;
-    std::string m_server;
-    std::string m_error_reason;
+    std::mutex m_mux;
+    std::condition_variable m_cvar;
+    std::string m_socketAdr;
+    std::string m_socketTypeStr;
+    zmq::socket_type m_socketType;
 
     std::thread m_thd;
     bool m_runListen = true;
+    bool m_sentMessage = false;
+    int m_replyWaitMillis = 2000; //TODO cfg
 
-    MessageHandlerFunc m_messageHandlerFunc;
-    MessageStrHandlerFunc m_messageStrHandlerFunc;
-    OpenHandlerFunc m_openHandlerFunc;
-    CloseHandlerFunc m_closeHandlerFunc;
-
-    /*
-    void on_message(connection_hdl hdl, WsClient::message_ptr msg)
-    {
-      //TRC_FUNCTION_ENTER("");
-      
-      (void)hdl; //silence -Wunused-parameter
-
-      if (m_messageStrHandlerFunc) {
-        m_messageStrHandlerFunc(msg->get_payload());
-      }
-
-      if (m_messageHandlerFunc) {
-        uint8_t* buf = (uint8_t*)msg->get_payload().data();
-        std::vector<uint8_t> vmsg(buf, buf + msg->get_payload().size());
-        m_messageHandlerFunc(vmsg);
-      }
-
-      //TRC_FUNCTION_LEAVE("");
-    }
-
-    void on_fail(connection_hdl hdl)
-    {
-      TRC_FUNCTION_ENTER("");
-
-      std::unique_lock<std::mutex> lck(m_connectedMux);
-      m_connected = false;
-      //std::cout << ">>> ZeroMqService on_fail" << std::endl;
-      m_server = m_client.get_con_from_hdl(hdl)->get_response_header("Server");
-      m_error_reason = m_client.get_con_from_hdl(hdl)->get_ec().message();
-      m_connectedCondition.notify_all();
-      TRC_WARNING("Error: " << PAR(m_error_reason));
-
-      TRC_FUNCTION_LEAVE("");
-    }
-
-    void on_close(connection_hdl hdl)
-    {
-      TRC_FUNCTION_ENTER("");
-
-      std::unique_lock<std::mutex> lck(m_connectedMux);
-      m_connected = false;
-      
-      std::stringstream s;
-      auto con = m_client.get_con_from_hdl(hdl);
-      s << "close code: " << con->get_remote_close_code() << " ("
-        << websocketpp::close::status::get_string(con->get_remote_close_code())
-        << "), close reason: " << con->get_remote_close_reason();
-      m_error_reason = s.str();
-
-      //std::cout << ">>> ZeroMqService CloseRemote" << std::endl;
-      m_connectedCondition.notify_all();
-
-      if (m_closeHandlerFunc) {
-        m_closeHandlerFunc();
-      }
-
-      TRC_FUNCTION_LEAVE("");
-    }
-    */
-    ///////////////////////////////
+    OnMessageFunc m_onMessageFunc;
+    OnReqTimeoutFunc m_onReqTimeoutFunc;
 
   public:
     Imp()
@@ -117,34 +86,65 @@ namespace shape {
     {
     }
 
-    void sendMessage(const std::vector<uint8_t> & msg)
-    {
-      TRC_FUNCTION_ENTER("");
-
-      zmq::message_t request(msg.data(), msg.data() + msg.size());
-      m_socket->send(request, zmq::send_flags::none);
-      //m_socket->send(&request, 0);
-
-      TRC_FUNCTION_LEAVE("");
-    }
-
     void sendMessage(const std::string & msg)
     {
       TRC_FUNCTION_ENTER("");
 
-      zmq::message_t request(msg.data(), msg.data() + msg.size());
-      m_socket->send(request, zmq::send_flags::none);
-      //m_socket->send(&request, 0);
+      switch (m_socketType) {
+
+      case zmq::socket_type::req:
+      if (!m_socket->connected()) {
+        TRC_DEBUG("Req socket not connected, probably disconnected when previous send() failure => connect");
+        open();
+      }
+
+      case zmq::socket_type::rep:
+      {
+
+        std::unique_lock<std::mutex> lck(m_mux);
+        zmq::message_t request(msg.data(), msg.data() + msg.size());
+        m_socket->send(request, zmq::send_flags::none);
+        m_sentMessage = true;
+        m_cvar.notify_one();
+      }
+
+      default:;
+      }
 
       TRC_FUNCTION_LEAVE("");
     }
 
-    void connect(const std::string & uri)
+    void open()
     {
-      TRC_FUNCTION_ENTER(PAR(uri));
+      TRC_FUNCTION_ENTER("");
 
-      //m_socket->connect("tcp://localhost:5555");
-      m_socket->connect(uri);
+      if (!m_socket) {
+        m_socket.reset(shape_new zmq::socket_t(m_context, m_socketType));
+      }
+
+      try {
+        switch (m_socketType) {
+
+        case zmq::socket_type::rep:
+        {
+          m_socket->bind(m_socketAdr);
+          m_thd = std::thread([&]() { listenRep(); });
+          break;
+        }
+
+        case zmq::socket_type::req:
+        {
+          m_socket->connect(m_socketAdr);
+          m_thd = std::thread([&]() { listenReq(); });
+          break;
+        }
+
+        default:;
+        }
+      }
+      catch (zmq::error_t &e) {
+        CATCH_EXC_TRC_WAR(zmq::error_t, e, PAR(e.num()) << NAME_PAR(socketType, m_socketTypeStr));
+      }
 
       TRC_FUNCTION_LEAVE("");
     }
@@ -153,8 +153,17 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER("");
 
-      //m_socket->disconnect(uri);
-
+      try {
+        m_runListen = false;
+        m_sentMessage = true;
+        m_cvar.notify_one();
+        m_socket->close();
+        if (m_thd.joinable())
+          m_thd.join();
+      }
+      catch (zmq::error_t &e) {
+        CATCH_EXC_TRC_WAR(zmq::error_t, e, PAR(e.num()) << NAME_PAR(socketType, m_socketTypeStr));
+      }
       TRC_FUNCTION_LEAVE("");
     }
 
@@ -163,60 +172,114 @@ namespace shape {
       return m_socket->connected();
     }
 
-    void registerMessageHandler(MessageHandlerFunc hndl)
+    void registerOnMessage(OnMessageFunc fc)
     {
-      m_messageHandlerFunc = hndl;
+      m_onMessageFunc = fc;
     }
 
-    void registerMessageStrHandler(MessageStrHandlerFunc hndl)
+    void registerOnReqTimeout(OnReqTimeoutFunc fc)
     {
-      m_messageStrHandlerFunc = hndl;
+      m_onReqTimeoutFunc = fc;
     }
 
-    void registerOpenHandler(OpenHandlerFunc hndl)
+    void unregisterOnMessage()
     {
-      m_openHandlerFunc = hndl;
+      m_onMessageFunc = nullptr;
     }
 
-    void registerCloseHandler(CloseHandlerFunc hndl)
+    void unregisterOnDisconnect()
     {
-      m_closeHandlerFunc = hndl;
+      m_onReqTimeoutFunc = nullptr;
     }
 
-    void unregisterMessageHandler()
-    {
-      m_messageHandlerFunc = nullptr;
-    }
-
-    void unregisterMessageStrHandler()
-    {
-      m_messageStrHandlerFunc = nullptr;
-    }
-
-    void unregisterOpenHandler()
-    {
-      m_openHandlerFunc = nullptr;
-    }
-
-    void unregisterCloseHandler()
-    {
-      m_closeHandlerFunc = nullptr;
-    }
-
-    void listen()
+    void listenReq()
     {
       TRC_FUNCTION_ENTER("");
+      const int tim = 10;
+      int cnt = m_replyWaitMillis / tim;
       while (m_runListen) {
-        zmq::message_t reply;
-        m_socket->recv(reply, zmq::recv_flags::none);
-        //m_socket->recv(&reply, 0);
+        try {
+          std::unique_lock<std::mutex> lck(m_mux);
+          m_cvar.wait(lck, [&] { return m_sentMessage; });
+          m_sentMessage = false;
+
+          while (m_runListen) {
+            zmq::message_t reply;
+            auto res = m_socket->recv(reply, zmq::recv_flags::dontwait);
+            if (res) {
+              if (m_onMessageFunc) {
+                m_onMessageFunc(std::string((char*)reply.data(), (char*)reply.data() + reply.size()));
+              }
+              break; //on message
+            }
+            else {
+              if (cnt-- > 0) {
+                m_cvar.wait_for(lck, std::chrono::milliseconds(tim));
+              }
+              else {
+                TRC_WARNING("No reply for " << PAR(m_replyWaitMillis));
+                //m_socket->disconnect(m_socketAdr);
+                m_socket->close();
+                if (m_onReqTimeoutFunc) {
+                  m_onReqTimeoutFunc();
+                }
+                break; //on timeout
+              }
+            }
+          }
+        }
+        catch (zmq::error_t &e) {
+          CATCH_EXC_TRC_WAR(zmq::error_t, e, PAR(e.num()) << NAME_PAR(socketType,m_socketTypeStr));
+        }
       }
       TRC_FUNCTION_LEAVE("")
     }
 
+    void listenRep()
+    {
+      TRC_FUNCTION_ENTER("");
+      if (m_socket->connected()) {
+        try {
+          while (m_runListen) {
+            zmq::message_t request;
+            auto res = m_socket->recv(request, zmq::recv_flags::dontwait);
+            if (res) {
+              if (m_onMessageFunc) {
+                m_onMessageFunc(std::string((char*)request.data(), (char*)request.data() + request.size()));
+              }
+              m_sentMessage = false;
+              {
+                std::unique_lock<std::mutex> lck(m_mux);
+                m_cvar.wait(lck, [&] { return m_sentMessage; });
+              }
+            }
+          }
+        }
+        catch (zmq::error_t &e) {
+          CATCH_EXC_TRC_WAR(zmq::error_t, e, PAR(e.num()) << NAME_PAR(socketType, m_socketTypeStr));
+        }
+      }
+      else {
+        TRC_WARNING("zmq socket not connected");
+      }
+      TRC_FUNCTION_LEAVE("")
+    }
+
+    void modify(const shape::Properties *props)
+    {
+      TRC_FUNCTION_ENTER("");
+
+      props->getMemberAsString("socketAdr", m_socketAdr);
+      props->getMemberAsString("socketType", m_socketTypeStr);
+
+      m_socketType = SocketTypeConvert::str2enum(m_socketTypeStr);
+      TRC_INFORMATION("Create socket: " << NAME_PAR(requiredSocketType, m_socketTypeStr))
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
     void activate(const shape::Properties *props)
     {
-      (void)props; //silence -Wunused-parameter
       TRC_FUNCTION_ENTER("");
       TRC_INFORMATION(std::endl <<
         "******************************" << std::endl <<
@@ -224,10 +287,9 @@ namespace shape {
         "******************************"
       );
 
-      m_socket.reset(shape_new zmq::socket_t(m_context, ZMQ_REQ));
+      modify(props);
 
-      m_thd = std::thread([&]() { listen(); });
-
+      open();
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -241,11 +303,7 @@ namespace shape {
         "******************************"
       );
 
-      m_runListen = false;
-      m_socket->close();
-      if (m_thd.joinable())
-        m_thd.join();
-
+      close();
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -263,19 +321,14 @@ namespace shape {
     delete m_imp;
   }
 
-  void ZeroMqService::sendMessage(const std::vector<uint8_t> & msg)
-  {
-    m_imp->sendMessage(msg);
-  }
-
   void ZeroMqService::sendMessage(const std::string & msg)
   {
     m_imp->sendMessage(msg);
   }
 
-  void ZeroMqService::connect(const std::string & uri)
+  void ZeroMqService::open()
   {
-    m_imp->connect(uri);
+    m_imp->open();
   }
 
   void ZeroMqService::close()
@@ -288,44 +341,25 @@ namespace shape {
     return m_imp->isConnected();
   }
 
-  void ZeroMqService::registerMessageHandler(MessageHandlerFunc hndl)
+  void ZeroMqService::registerOnMessage(OnMessageFunc fc)
   {
-    m_imp->registerMessageHandler(hndl);
+    m_imp->registerOnMessage(fc);
   }
 
-  void ZeroMqService::registerMessageStrHandler(MessageStrHandlerFunc hndl)
+  void ZeroMqService::registerOnReqTimeout(OnReqTimeoutFunc fc)
   {
-    m_imp->registerMessageStrHandler(hndl);
+    m_imp->registerOnReqTimeout(fc);
   }
 
-  void ZeroMqService::registerOpenHandler(OpenHandlerFunc hndl)
+
+  void ZeroMqService::unregisterOnMessage()
   {
-    m_imp->registerOpenHandler(hndl);
+    m_imp->unregisterOnMessage();
   }
 
-  void ZeroMqService::registerCloseHandler(CloseHandlerFunc hndl)
+  void ZeroMqService::unregisterOnDisconnect()
   {
-    m_imp->registerCloseHandler(hndl);
-  }
-
-  void ZeroMqService::unregisterMessageHandler()
-  {
-    m_imp->unregisterMessageHandler();
-  }
-
-  void ZeroMqService::unregisterMessageStrHandler()
-  {
-    m_imp->unregisterMessageStrHandler();
-  }
-
-  void ZeroMqService::unregisterOpenHandler()
-  {
-    m_imp->unregisterOpenHandler();
-  }
-
-  void ZeroMqService::unregisterCloseHandler()
-  {
-    m_imp->unregisterCloseHandler();
+    m_imp->unregisterOnDisconnect();
   }
 
   void ZeroMqService::activate(const shape::Properties *props)
@@ -340,7 +374,7 @@ namespace shape {
 
   void ZeroMqService::modify(const shape::Properties *props)
   {
-    (void)props; //silence -Wunused-parameter
+    m_imp->modify(props);
   }
 
   void ZeroMqService::attachInterface(shape::ITraceService* iface)

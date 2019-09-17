@@ -1,0 +1,46 @@
+{
+  "applicationName": "startup",
+  "resourceDir": "",
+  "dataDir": "",
+  "cacheDir": "",
+  "userDir": "",
+  "configurationDir": "configuration",
+  "deploymentDir": "../../..",
+  "components": [
+    {
+      "name": "shape::TraceFormatService",
+      "libraryPath": "shape/bin",
+      "libraryName": "TraceFormatService",
+      "enabled": true,
+      "startlevel": -4
+    },
+    {
+      "name": "shape::TraceFileService",
+      "libraryPath": "shape/bin",
+      "libraryName": "TraceFileService",
+      "enabled": true,
+      "startlevel": -3
+    },
+    {
+      "name": "shape::LauncherService",
+      "libraryPath": "",
+      "libraryName": "",
+      "enabled": true,
+      "startlevel": -2
+    },
+    {
+      "name": "shape::ZeroMqService",
+      "libraryPath": "shapeware/bin",
+      "libraryName": "ZeroMqService",
+      "enabled": true,
+      "startlevel": 1
+    },
+    {
+      "name": "shape::TestZeroMqService",
+      "libraryPath": "shapeware/bin",
+      "libraryName": "TestZeroMqService",
+      "enabled": true,
+      "startlevel": 2
+    }
+  ]
+}

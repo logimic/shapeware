@@ -1,0 +1,14 @@
+{
+  "component": "shape::TraceFileService",
+  "instance": "shape::TraceFileService-TestZeroMqService",
+
+  "path": "",
+  "filename": "TestZeroMqService.txt",
+
+  "VerbosityLevels": [
+    {
+      "channel": 0,
+      "level": "DBG"
+    }
+  ]
+}
