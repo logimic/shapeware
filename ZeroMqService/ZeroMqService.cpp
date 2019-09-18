@@ -62,7 +62,6 @@ namespace shape {
 
     enum class SocketState {
       open,
-      work,
       close
     };
   
@@ -72,7 +71,7 @@ namespace shape {
     std::condition_variable m_cvar;
     std::mutex m_muxReady;
     std::condition_variable m_cvarReady;
-    bool m_socketReady = false;
+    bool m_socketOpened = false;
     std::string m_socketAdr;
     std::string m_socketTypeStr;
     zmq::socket_type m_socketType;
@@ -104,10 +103,15 @@ namespace shape {
 
       {
         std::unique_lock<std::mutex> lck(m_mux);
-        m_messageToSend = msg;
-        m_sendMessage = true;
+        if (m_requireSocketState == SocketState::open) {
+          m_messageToSend = msg;
+          m_sendMessage = true;
+          m_cvar.notify_all();
+        }
+        else {
+          THROW_EXC_TRC_WAR(std::logic_error, "Socket closed => cannot send msg")
+        }
       }
-      m_cvar.notify_all();
 
       TRC_FUNCTION_LEAVE("");
     }
@@ -116,22 +120,21 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER("");
 
+      bool opening = false;
       {
-        TRC_DEBUG("lock1");
         std::unique_lock<std::mutex> lck(m_mux);
-        TRC_DEBUG("lock2");
-        m_socketReady = false;
-        m_requireSocketState = SocketState::open;
-        m_cvar.notify_all();
-        TRC_DEBUG("lock3");
+        if (m_requireSocketState != SocketState::open) {
+          opening = true;
+          m_socketOpened = false;
+          m_requireSocketState = SocketState::open;
+          m_cvar.notify_all();
+        }
       }
 
-      {
-        TRC_DEBUG("lock4");
+      if (opening) {
+        //wait for socket open prodedure
         std::unique_lock<std::mutex> lck(m_muxReady);
-        TRC_DEBUG("lock5");
-        m_cvarReady.wait(lck, [&] { return m_socketReady; });
-        TRC_DEBUG("lock6");
+        m_cvarReady.wait(lck, [&] { return m_socketOpened; });
       }
 
       TRC_FUNCTION_LEAVE("");
@@ -141,15 +144,20 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER("");
 
+      bool closing = false;
       {
         std::unique_lock<std::mutex> lck(m_mux);
-        m_requireSocketState = SocketState::close;
+        if (m_requireSocketState == SocketState::open) {
+          closing = true;
+          m_socketOpened = true;
+          m_requireSocketState = SocketState::close;
+          m_cvar.notify_all();
+        }
       }
-      m_cvar.notify_all();
 
-      {
+      if (closing) {
         std::unique_lock<std::mutex> lck(m_muxReady);
-        m_cvarReady.wait(lck);
+        m_cvarReady.wait(lck, [&] { return !m_socketOpened; });
       }
 
       TRC_FUNCTION_LEAVE("");
@@ -198,19 +206,15 @@ namespace shape {
         }
 
         try {
-          TRC_DEBUG("open socket1");
           m_socket.reset(shape_new zmq::socket_t(m_context, m_socketType));
           int linger = 5;
           m_socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-          TRC_DEBUG("open socket2");
           m_socket->connect(m_socketAdr);
-          TRC_DEBUG("open socket3");
           resetSocket = false;
           {
             std::unique_lock<std::mutex> lck(m_muxReady);
-            m_socketReady = true;
+            m_socketOpened = true;
             m_cvarReady.notify_all();
-            TRC_DEBUG("open socket4");
           }
 
           while (true) {
@@ -252,7 +256,11 @@ namespace shape {
             if (resetSocket || m_requireSocketState == SocketState::close || !m_runThd) {
               m_socket->disconnect(m_socketAdr);
               m_socket->close();
-              m_cvarReady.notify_all();
+              {
+                std::unique_lock<std::mutex> lck(m_muxReady);
+                m_socketOpened = false;
+                m_cvarReady.notify_all();
+              }
               break; //go to wait to open again
             }
           }
@@ -283,7 +291,11 @@ namespace shape {
         try {
           m_socket.reset(shape_new zmq::socket_t(m_context, m_socketType));
           m_socket->bind(m_socketAdr);
-          m_cvarReady.notify_all();
+          {
+            std::unique_lock<std::mutex> lck(m_muxReady);
+            m_socketOpened = true;
+            m_cvarReady.notify_all();
+          }
 
           while (true) {
 
@@ -320,7 +332,11 @@ namespace shape {
             if (m_requireSocketState == SocketState::close || !m_runThd) {
               m_socket->unbind(m_socketAdr);
               m_socket->close();
-              m_cvarReady.notify_all();
+              {
+                std::unique_lock<std::mutex> lck(m_muxReady);
+                m_socketOpened = false;
+                m_cvarReady.notify_all();
+              }
               break; //go to wait to open again
             }
 
