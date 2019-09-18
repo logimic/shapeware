@@ -70,7 +70,9 @@ namespace shape {
     zmq::context_t m_context;
     mutable std::mutex m_mux;
     std::condition_variable m_cvar;
+    std::mutex m_muxReady;
     std::condition_variable m_cvarReady;
+    bool m_socketReady = false;
     std::string m_socketAdr;
     std::string m_socketTypeStr;
     zmq::socket_type m_socketType;
@@ -115,14 +117,21 @@ namespace shape {
       TRC_FUNCTION_ENTER("");
 
       {
+        TRC_DEBUG("lock1");
         std::unique_lock<std::mutex> lck(m_mux);
+        TRC_DEBUG("lock2");
+        m_socketReady = false;
         m_requireSocketState = SocketState::open;
+        m_cvar.notify_all();
+        TRC_DEBUG("lock3");
       }
-      m_cvar.notify_all();
 
       {
-        std::unique_lock<std::mutex> lck(m_mux);
-        m_cvarReady.wait(lck);
+        TRC_DEBUG("lock4");
+        std::unique_lock<std::mutex> lck(m_muxReady);
+        TRC_DEBUG("lock5");
+        m_cvarReady.wait(lck, [&] { return m_socketReady; });
+        TRC_DEBUG("lock6");
       }
 
       TRC_FUNCTION_LEAVE("");
@@ -139,7 +148,7 @@ namespace shape {
       m_cvar.notify_all();
 
       {
-        std::unique_lock<std::mutex> lck(m_mux);
+        std::unique_lock<std::mutex> lck(m_muxReady);
         m_cvarReady.wait(lck);
       }
 
@@ -189,12 +198,20 @@ namespace shape {
         }
 
         try {
+          TRC_DEBUG("open socket1");
           m_socket.reset(shape_new zmq::socket_t(m_context, m_socketType));
           int linger = 5;
           m_socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+          TRC_DEBUG("open socket2");
           m_socket->connect(m_socketAdr);
+          TRC_DEBUG("open socket3");
           resetSocket = false;
-          m_cvarReady.notify_all();
+          {
+            std::unique_lock<std::mutex> lck(m_muxReady);
+            m_socketReady = true;
+            m_cvarReady.notify_all();
+            TRC_DEBUG("open socket4");
+          }
 
           while (true) {
             //wait idle till request to send
