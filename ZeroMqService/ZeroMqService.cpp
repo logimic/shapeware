@@ -58,28 +58,35 @@ namespace shape {
 
     typedef shape::EnumStringConvertor<zmq::socket_type, SocketTypeConvertTable> SocketTypeConvert;
 
-  
+    enum class SocketState {
+      open,
+      work,
+      close
+    };
   
   private:
     zmq::context_t m_context;
-    std::unique_ptr<zmq::socket_t> m_socket;
-    std::mutex m_mux;
+    mutable std::mutex m_mux;
     std::condition_variable m_cvar;
+    std::condition_variable m_cvarReady;
     std::string m_socketAdr;
     std::string m_socketTypeStr;
     zmq::socket_type m_socketType;
+    SocketState m_requireSocketState = SocketState::close;
 
     std::thread m_thd;
     bool m_runThd = true;
-    bool m_listen = false;
-    bool m_sentMessage = false;
-    int m_replyWaitMillis = 2000; //TODO cfg
+    bool m_sendMessage = false;
+    int m_replyWaitMillis = 2000;
+
+    std::string m_messageToSend;
 
     OnMessageFunc m_onMessageFunc;
     OnReqTimeoutFunc m_onReqTimeoutFunc;
 
   public:
     Imp()
+      :m_context(1)
     {
     }
 
@@ -91,25 +98,12 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER("");
 
-      try {
-        switch (m_socketType) {
-
-        case zmq::socket_type::req:
-        case zmq::socket_type::rep:
-        {
-          std::unique_lock<std::mutex> lck(m_mux);
-          zmq::message_t request(msg.data(), msg.data() + msg.size());
-          m_socket->send(request, zmq::send_flags::none);
-          m_sentMessage = true;
-          m_cvar.notify_one();
-        }
-
-        default:;
-        }
+      {
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_messageToSend = msg;
+        m_sendMessage = true;
       }
-      catch (zmq::error_t &e) {
-        CATCH_EXC_TRC_WAR(zmq::error_t, e, PAR(e.num()) << NAME_PAR(socketType, m_socketTypeStr));
-      }
+      m_cvar.notify_all();
 
       TRC_FUNCTION_LEAVE("");
     }
@@ -118,33 +112,15 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER("");
 
-      std::unique_lock<std::mutex> lck(m_mux);
-      m_socket.reset(shape_new zmq::socket_t(m_context, m_socketType));
-
-      try {
-        switch (m_socketType) {
-
-        case zmq::socket_type::rep:
-        {
-          m_socket->bind(m_socketAdr);
-          m_listen = true;
-          m_cvar.notify_all();
-          break;
-        }
-
-        case zmq::socket_type::req:
-        {
-          int linger = 5;
-          m_socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-          m_socket->connect(m_socketAdr);
-          break;
-        }
-
-        default:;
-        }
+      {
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_requireSocketState = SocketState::open;
       }
-      catch (zmq::error_t &e) {
-        CATCH_EXC_TRC_WAR(zmq::error_t, e, PAR(e.num()) << NAME_PAR(socketType, m_socketTypeStr));
+      m_cvar.notify_all();
+
+      {
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_cvarReady.wait(lck);
       }
 
       TRC_FUNCTION_LEAVE("");
@@ -154,37 +130,24 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER("");
 
-      if (m_socket) {
-        m_listen = false;
+      {
         std::unique_lock<std::mutex> lck(m_mux);
-
-        switch (m_socketType) {
-
-        case zmq::socket_type::rep:
-        {
-          m_socket->unbind(m_socketAdr);
-          std::this_thread::sleep_for(std::chrono::milliseconds(100)); //put some latency to reuse bind address
-          break;
-        }
-
-        case zmq::socket_type::req:
-        {
-          m_socket->disconnect(m_socketAdr);
-          break;
-        }
-
-        default:;
-        }
-
-        m_socket->close();
-        m_socket.release();
+        m_requireSocketState = SocketState::close;
       }
+      m_cvar.notify_all();
+
+      {
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_cvarReady.wait(lck);
+      }
+
       TRC_FUNCTION_LEAVE("");
     }
 
-    bool isConnected() const
+    bool isOpen() const
     {
-      return m_socket && m_socket->connected();
+      std::unique_lock<std::mutex> lck(m_mux);
+      return m_requireSocketState == SocketState::open;
     }
 
     void registerOnMessage(OnMessageFunc fc)
@@ -207,49 +170,71 @@ namespace shape {
       m_onReqTimeoutFunc = nullptr;
     }
 
-    void listenReq()
+    void workerReq()
     {
       TRC_FUNCTION_ENTER("");
       
+      std::unique_ptr<zmq::socket_t> m_socket;
+      bool resetSocket = false;
+
       while (m_runThd) {
+        //wait idle to open
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_cvar.wait(lck, [&] { return m_requireSocketState == SocketState::open || !m_runThd; });
+
+        if (!m_runThd) {
+          break; //finish thread
+        }
+
         try {
-          //wait idle till expect reply
-          std::unique_lock<std::mutex> lck(m_mux);
-          m_cvar.wait(lck, [&] { return m_sentMessage; });
-          
-          //request sent => receive reply
-          m_sentMessage = false;
+          m_socket.reset(shape_new zmq::socket_t(m_context, m_socketType));
+          int linger = 5;
+          m_socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+          m_socket->connect(m_socketAdr);
+          resetSocket = false;
+          m_cvarReady.notify_all();
 
-          while (m_socket && m_runThd) {
-            //  Poll socket for a reply, with timeout
-            zmq::pollitem_t items[] = { { static_cast<void*>(*(m_socket.get())), 0, ZMQ_POLLIN, 0 } };
-            zmq::poll(&items[0], 1, m_replyWaitMillis);
+          while (true) {
+            //wait idle till request to send
+            m_cvar.wait(lck, [&] { return m_sendMessage || m_requireSocketState == SocketState::close || !m_runThd; });
 
-            //  If we got a reply, process it
-            if (items[0].revents & ZMQ_POLLIN) {
-              //  We got a reply from the server
-              zmq::message_t reply;
-              auto res = m_socket->recv(reply);
-              if (res) {
-                if (m_onMessageFunc) {
-                  m_onMessageFunc(std::string((char*)reply.data(), (char*)reply.data() + reply.size()));
+            if (m_sendMessage) {
+
+              m_sendMessage = false;
+              zmq::message_t request(m_messageToSend.data(), m_messageToSend.data() + m_messageToSend.size());
+              m_socket->send(request, zmq::send_flags::none);
+
+              //  wait in poll socket for a reply, with timeout
+              zmq::pollitem_t items[] = { { static_cast<void*>(*(m_socket.get())), 0, ZMQ_POLLIN, 0 } };
+              zmq::poll(&items[0], 1, m_replyWaitMillis);
+
+              //  If we got a reply, process it
+              if (items[0].revents & ZMQ_POLLIN) {
+                //  We got a reply from the server
+                zmq::message_t reply;
+                auto res = m_socket->recv(reply);
+                if (res) {
+                  if (m_onMessageFunc) {
+                    m_onMessageFunc(std::string((char*)reply.data(), (char*)reply.data() + reply.size()));
+                  }
                 }
-                break; //on message
+              }
+              else {
+                TRC_WARNING("No reply for " << PAR(m_replyWaitMillis));
+
+                if (m_onReqTimeoutFunc) {
+                  m_onReqTimeoutFunc();
+                }
+                  
+                resetSocket = true;
               }
             }
-            else {
-              TRC_WARNING("No reply for " << PAR(m_replyWaitMillis));
-              
-              //reset socket
-              m_socket.reset(shape_new zmq::socket_t(m_context, m_socketType));
-              int linger = 0;
-              m_socket->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
-              m_socket->connect(m_socketAdr);
-
-              if (m_onReqTimeoutFunc) {
-                m_onReqTimeoutFunc();
-              }
-              break; //on timeout
+            
+            if (resetSocket || m_requireSocketState == SocketState::close || !m_runThd) {
+              m_socket->disconnect(m_socketAdr);
+              m_socket->close();
+              m_cvarReady.notify_all();
+              break; //go to wait to open again
             }
           }
         }
@@ -257,49 +242,76 @@ namespace shape {
           CATCH_EXC_TRC_WAR(zmq::error_t, e, PAR(e.num()) << NAME_PAR(socketType,m_socketTypeStr));
         }
       }
+
       TRC_FUNCTION_LEAVE("")
     }
 
-    void listenRep()
+    void workerRep()
     {
       TRC_FUNCTION_ENTER("");
+
+      std::unique_ptr<zmq::socket_t> m_socket;
+
       while (m_runThd) {
+        //wait idle to open
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_cvar.wait(lck, [&] { return m_requireSocketState == SocketState::open || !m_runThd; });
+
+        if (!m_runThd) {
+          break; //finish thread
+        }
+
         try {
-          //wait idle till m_socket ready for listen
-          std::unique_lock<std::mutex> lck(m_mux);
-          //TRC_DEBUG("wait1");
-          m_cvar.wait(lck, [&] { return m_listen; });
-          //TRC_DEBUG("out wait1");
+          m_socket.reset(shape_new zmq::socket_t(m_context, m_socketType));
+          m_socket->bind(m_socketAdr);
+          m_cvarReady.notify_all();
 
-          while (m_socket && m_runThd && m_listen) {
-            //  Poll socket for a reply, with timeout
+          while (true) {
+
+            lck.unlock();
+
+            //  wait in poll socket for a request, with timeout
             zmq::pollitem_t items[] = { { static_cast<void*>(*(m_socket.get())), 0, ZMQ_POLLIN, 0 } };
-            //TRC_DEBUG("poll");
-            zmq::poll(&items[0], 1, 1500); //must be >1000 according example in http://zguide.zeromq.org/cpp:lpclient
-            //TRC_DEBUG("out poll");
+            zmq::poll(&items[0], 1, 2000); //min is 1000
 
-            //  If we got a request, process it
+            lck.lock();
+
             if (items[0].revents & ZMQ_POLLIN) {
               //  We got a request from a client
               zmq::message_t request;
               auto res = m_socket->recv(request);
+                
               if (res) {
                 if (m_onMessageFunc) {
                   m_onMessageFunc(std::string((char*)request.data(), (char*)request.data() + request.size()));
                 }
-                m_sentMessage = false;
-                //wait for async sent reply
-                //TRC_DEBUG("wait2");
-                m_cvar.wait(lck, [&] { return m_sentMessage; });
-                //TRC_DEBUG("out wait2");
+              }
+              
+              m_sendMessage = false;
+              //wait for async sent reply
+              m_cvar.wait(lck, [&] { return m_sendMessage || m_requireSocketState == SocketState::close || !m_runThd; });
+
+              if (m_sendMessage) {
+                m_sendMessage = false;
+                zmq::message_t reply(m_messageToSend.data(), m_messageToSend.data() + m_messageToSend.size());
+                m_socket->send(reply, zmq::send_flags::none);
               }
             }
+
+            if (m_requireSocketState == SocketState::close || !m_runThd) {
+              m_socket->unbind(m_socketAdr);
+              m_socket->close();
+              m_cvarReady.notify_all();
+              break; //go to wait to open again
+            }
+
           }
         }
         catch (zmq::error_t &e) {
           CATCH_EXC_TRC_WAR(zmq::error_t, e, PAR(e.num()) << NAME_PAR(socketType, m_socketTypeStr));
         }
       }
+
       TRC_FUNCTION_LEAVE("")
     }
 
@@ -309,6 +321,10 @@ namespace shape {
 
       props->getMemberAsString("socketAdr", m_socketAdr);
       props->getMemberAsString("socketType", m_socketTypeStr);
+      auto res = props->getMemberAsInt("replyWaitMillis", m_replyWaitMillis);
+      if (res != shape::Properties::Result::ok) {
+        TRC_INFORMATION("using default: " << PAR(m_replyWaitMillis));
+      }
 
       m_socketType = SocketTypeConvert::str2enum(m_socketTypeStr);
       TRC_INFORMATION("Create socket: " << NAME_PAR(requiredSocketType, m_socketTypeStr))
@@ -327,27 +343,24 @@ namespace shape {
 
       modify(props);
 
-      open();
-
-      /*
       switch (m_socketType) {
 
       case zmq::socket_type::rep:
       {
-        m_thd = std::thread([&]() { listenRep(); });
+        m_thd = std::thread([&]() { workerRep(); });
         break;
       }
 
       case zmq::socket_type::req:
       {
-        m_thd = std::thread([&]() { listenReq(); });
+        m_thd = std::thread([&]() { workerReq(); });
         break;
       }
 
       default:;
       }
-      */
 
+      //open();
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -361,11 +374,9 @@ namespace shape {
         "******************************"
       );
 
-      close();
+      //close();
 
       m_runThd = false;
-      m_sentMessage = true;
-      m_listen = true;
       m_cvar.notify_all();
 
       if (m_thd.joinable())
@@ -402,9 +413,9 @@ namespace shape {
     m_imp->close();
   }
 
-  bool ZeroMqService::isConnected() const
+  bool ZeroMqService::isOpen() const
   {
-    return m_imp->isConnected();
+    return m_imp->isOpen();
   }
 
   void ZeroMqService::registerOnMessage(OnMessageFunc fc)

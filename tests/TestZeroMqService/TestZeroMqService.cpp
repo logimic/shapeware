@@ -44,6 +44,8 @@ namespace shape {
   const std::string TEST_MSG4 = "Test message 4";
   const std::string TEST_MSG5 = "Test message 5";
   const std::string TEST_MSG6 = "Test message 6";
+  const std::string TEST_MSG7 = "Test message 7";
+  const std::string TEST_MSG8 = "Test message 8";
   const std::string ON_TIMEOUT = "OnTimeout";
   const unsigned MILLIS_WAIT = 10000;
   static int cnt = 0;
@@ -265,8 +267,6 @@ namespace shape {
       ASSERT_NE(nullptr, zRep);
       ASSERT_NE(nullptr, zReqH);
       ASSERT_NE(nullptr, zRepH);
-      //ASSERT_TRUE(zReq->isConnected());
-      //ASSERT_TRUE(zRep->isConnected());
     };
 
     void TearDown(void) override
@@ -274,7 +274,27 @@ namespace shape {
 
   };
 
-  /*
+  TEST_F(FixTestZeroMqService, Idle)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> Idle");
+    EXPECT_FALSE(zReq->isOpen());
+    EXPECT_FALSE(zRep->isOpen());
+  }
+
+  TEST_F(FixTestZeroMqService, ReqOpen)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> ReqOpen1");
+    zReq->open();
+    EXPECT_TRUE(zReq->isOpen());
+  }
+
+  TEST_F(FixTestZeroMqService, RepOpen)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> RepOpen1");
+    zRep->open();
+    EXPECT_TRUE(zRep->isOpen());
+  }
+
   TEST_F(FixTestZeroMqService, ReqSendRepRecv1)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> ReqSendRepRecv1");
@@ -307,7 +327,7 @@ namespace shape {
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> RepClose");
     zRep->close();
-    EXPECT_FALSE(zRep->isConnected());
+    EXPECT_FALSE(zRep->isOpen());
   }
 
   TEST_F(FixTestZeroMqService, ReqTimeout)
@@ -315,14 +335,13 @@ namespace shape {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> ReqTimeout");
     zReq->sendMessage(TEST_MSG3);
     EXPECT_EQ(ON_TIMEOUT, zReqH->fetchMessage(MILLIS_WAIT));
-    //EXPECT_FALSE(zReq->isConnected());
   }
 
   TEST_F(FixTestZeroMqService, RepReOpen)
   {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> RepReOpen");
     zRep->open();
-    //EXPECT_TRUE(zRep->isConnected());
+    EXPECT_TRUE(zRep->isOpen());
   }
 
   TEST_F(FixTestZeroMqService, ReqSendRepRecv3)
@@ -337,7 +356,35 @@ namespace shape {
     TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> RepSendReqRecv3");
     zRep->sendMessage(TEST_MSG6);
     EXPECT_EQ(TEST_MSG6, zReqH->fetchMessage(MILLIS_WAIT));
-    //zReq->close();
   }
-  */
+
+  TEST_F(FixTestZeroMqService, ReqClose)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> ReqClose");
+    zReq->close();
+    EXPECT_FALSE(zReq->isOpen());
+  }
+
+  TEST_F(FixTestZeroMqService, ReqReOpen)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> ReqReOpen");
+    zReq->open();
+    EXPECT_TRUE(zReq->isOpen());
+  }
+
+  TEST_F(FixTestZeroMqService, ReqSendRepRecv4)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> ReqSendRepRecv4");
+    zReq->sendMessage(TEST_MSG7);
+    EXPECT_EQ(TEST_MSG7, zRepH->fetchMessage(MILLIS_WAIT));
+  }
+
+  TEST_F(FixTestZeroMqService, RepSendReqRecv4)
+  {
+    TRC_INFORMATION(std::endl << ">>>>>>>>>>>>>>>>>>>>>>>>>>> RepSendReqRecv4");
+    zRep->sendMessage(TEST_MSG8);
+    EXPECT_EQ(TEST_MSG8, zReqH->fetchMessage(MILLIS_WAIT));
+  }
+
+
 }

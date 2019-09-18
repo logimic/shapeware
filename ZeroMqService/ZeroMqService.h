@@ -38,7 +38,7 @@ namespace shape {
 
     void open() override;
     void close() override;
-    bool isConnected() const override;
+    bool isOpen() const override;
 
     void activate(const shape::Properties *props = 0);
     void deactivate();
