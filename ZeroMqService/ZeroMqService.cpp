@@ -16,8 +16,10 @@
 
 #include "ZeroMqService.h"
 #include "Trace.h"
+#include "zmq.hpp"
 #include <thread>
-#include <zmq.hpp>
+#include <mutex>
+#include <condition_variable>
 
 #include "shape__ZeroMqService.hxx"
 
