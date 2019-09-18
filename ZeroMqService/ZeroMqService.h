@@ -32,7 +32,7 @@ namespace shape {
     void registerOnMessage(OnMessageFunc fc) override;
     void registerOnReqTimeout(OnReqTimeoutFunc fc) override;
     void unregisterOnMessage() override;
-    void unregisterOnDisconnect() override;
+    void unregisterOnReqTimeout() override;
 
     void sendMessage(const std::string& msg)  override;
 

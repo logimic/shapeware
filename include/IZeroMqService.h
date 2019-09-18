@@ -36,7 +36,7 @@ namespace shape {
     /// \details
     /// If the handler is not required anymore, it is possible to unregister via this method.
     virtual void unregisterOnMessage() = 0;
-    virtual void unregisterOnDisconnect() = 0;
+    virtual void unregisterOnReqTimeout() = 0;
 
     /// \brief send message
     /// \param [in] msg message to be sent 

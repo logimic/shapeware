@@ -1,6 +1,6 @@
 {
   "component": "shape::ZeroMqService",
   "instance": "ZeroMqService-rep",
-  "socketAdr": "tcp://*:5555",
+  "socketAdr": "tcp://127.0.0.1:5555",
   "socketType": "rep"
 }
