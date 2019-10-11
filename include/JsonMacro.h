@@ -18,6 +18,15 @@
   value = static_cast<int>(pv->GetDouble()); \
 }
 
+#define GET_JSON_AS_UINT(jsonVal, pointerPath, value) \
+{ \
+  const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
+  if (!(pv && pv->IsUint())) { \
+    THROW_EXC_TRC_WAR(std::logic_error, "Missing or bad type: \"" << pointerPath << "\"") \
+  } \
+  value = pv->GetUint(); \
+}
+
 #define GET_JSON_AS_BOOL(jsonVal, pointerPath, value) \
 { \
   const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
