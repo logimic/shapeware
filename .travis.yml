@@ -25,3 +25,6 @@ script:
   - cmake -Bshapeware-build -H. -Dshape_DIR:PATH=`pwd`/shape-build -DBUILD_ZEROMQ:BOOL=true -DBUILD_TESTING:BOOL=true -DCMAKE_BUILD_TYPE=Debug
   - cmake --build shapeware-build --target install
   - cd shapeware-build/ && ctest
+matrix:
+  allow_failures:
+    - compiler: clang
