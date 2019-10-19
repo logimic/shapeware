@@ -5,13 +5,15 @@ compiler:
 dist: bionic
 addons:
   apt:
-    sources:
-      - deb https://repos.iqrf.org/ubuntu bionic stable testing
     packages:
       - libcurl4-openssl-dev
-      - libpaho-mqtt-dev
       - libssl-dev
       - libzmqpp-dev
+before_install:
+  - sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 9C076FCC7AB8F2E43C2AB0E73241B9B7B4BD8F8E
+  - echo "deb https://repos.iqrf.org/ubuntu bionic stable testing" | sudo tee /etc/apt/sources.list.d/iqrf.list
+  - sudo apt-get update
+  - sudo apt-get install libpaho-mqtt-dev
 before_script:
   - mkdir deploy
   - git clone --recurse-submodules https://github.com/logimic/shape.git
