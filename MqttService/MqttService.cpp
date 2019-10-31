@@ -792,9 +792,9 @@ namespace shape {
       props->getMemberAsInt("BufferSize", m_bufferSize);
 
       std::string dataDir = m_iLaunchService->getDataDir();
-      m_trustStore = dataDir + "/cert/" + m_trustStore;
-      m_keyStore = dataDir + "/cert/" + m_keyStore;
-      m_privateKey = dataDir + "/cert/" + m_privateKey;
+      m_trustStore = m_trustStore.empty() ? "" : dataDir + "/cert/" + m_trustStore;
+      m_keyStore = m_keyStore.empty() ? "" : dataDir + "/cert/" + m_keyStore;
+      m_privateKey = m_privateKey.empty() ? "" : dataDir + "/cert/" + m_privateKey;
 
       TRC_FUNCTION_LEAVE("");
     }
