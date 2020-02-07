@@ -193,6 +193,7 @@ namespace shape {
       if (m_connectThread.joinable())
         m_connectThread.join();
 
+      TRC_WARNING("Disconnect: => Message queue is suspended");
       m_messageQueue->suspend();
 
       int retval;
@@ -313,10 +314,15 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
+      if (m_messageQueue->isSuspended()) {
+        size_t bufferSize = m_messageQueue->size();
+        TRC_WARNING("Message queue is suspended as the connection is broken => msg will be buffered to be sent later " << PAR(bufferSize));
+      }
+
       int retval = m_messageQueue->pushToQueue(std::make_pair(topic, msg));
       if (retval > m_bufferSize && m_buffered) {
         auto task = m_messageQueue->pop();
-        TRC_WARNING("buffer overload => remove the oldest msg: " << std::endl <<
+        TRC_WARNING("Buffer overload => remove the oldest msg: " << std::endl <<
           NAME_PAR(topic, task.first) << std::endl <<
           std::string((char*)task.second.data(), task.second.size()));
       }
@@ -396,7 +402,6 @@ namespace shape {
       {
         std::unique_lock<std::mutex> lck(m_connectionMutex);
         m_connected = true;
-        m_messageQueue->recover();
         m_connectionVariable.notify_one();
       }
 
@@ -404,10 +409,6 @@ namespace shape {
         m_mqttOnConnectHandlerFunc();
       }
 
-      //if (!m_topicToSubscribe.empty()) {
-      //  TRC_DEBUG("Subscribing scheduled topic");
-      //  subscribeTopic(m_topicToSubscribe);
-      //}
       TRC_FUNCTION_LEAVE("");
     }
 
@@ -478,6 +479,9 @@ namespace shape {
         m_mqttOnSubscribeHandlerFunc(m_topicToSubscribe, true);
       }
 
+      TRC_WARNING("\n Message queue is recovered => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
+      m_messageQueue->recover();
+
       TRC_FUNCTION_LEAVE("");
     }
 
@@ -537,12 +541,14 @@ namespace shape {
 
       m_deliveredtoken = 0;
 
+      //MQTTAsync_deliveryComplete
+
       if ((retval = MQTTAsync_sendMessage(m_client, topic.c_str(), &pubmsg, &m_send_opts)) == MQTTASYNC_SUCCESS) {
         bretval = true;
         m_deliveredtoken = m_send_opts.token;
       }
       else {
-        TRC_WARNING("Failed to start sendMessage: " << PAR(retval));
+        TRC_WARNING("Failed to start sendMessage: " << PAR(retval) << " => Message queue is suspended");
         m_messageQueue->suspend();
         if (!m_buffered) {
           bretval = true; // => pop anyway from queue
@@ -572,9 +578,8 @@ namespace shape {
     }
     void onSendFailure(MQTTAsync_failureData* response)
     {
-      TRC_WARNING("Message sent failure: " << PAR(response->code));
+      TRC_WARNING("Message sent failure: " << PAR(response->code) << " => Message queue is suspended");
       m_messageQueue->suspend();
-      //connect();
     }
 
     ///////////////////////
@@ -679,7 +684,8 @@ namespace shape {
     }
     void connlost(char *cause) {
       TRC_FUNCTION_ENTER("");
-      TRC_WARNING("Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")));
+      TRC_WARNING("Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")) << " => Message queue is suspended");
+      m_messageQueue->suspend();
       connect();
       TRC_FUNCTION_LEAVE("");
     }
@@ -735,6 +741,7 @@ namespace shape {
 
       // init send options
       m_send_opts.onSuccess = s_onSend;
+      m_send_opts.onFailure = s_onSendFailure;
       m_send_opts.onFailure = s_onSendFailure;
       m_send_opts.context = this;
 

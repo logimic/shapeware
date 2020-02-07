@@ -182,7 +182,7 @@ namespace shape {
 
     void sendMessage(const std::string & msg)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(msg));
 
       websocketpp::lib::error_code ec;
       m_client.send(m_connection_hdl, msg, websocketpp::frame::opcode::text, ec); // send text message.
