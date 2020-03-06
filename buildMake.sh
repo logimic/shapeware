@@ -24,5 +24,5 @@ popd
 
 #build from generated build environment
 cmake --build ${builddir} --config Debug --target install
-cmake --build ${builddir} --config Release --target install
+
 
