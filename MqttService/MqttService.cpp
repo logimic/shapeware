@@ -311,12 +311,12 @@ namespace shape {
     void publish(const std::string& topic, const std::vector<uint8_t> & msg)
     {
       if (nullptr == m_client) {
-        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
+        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)" << PAR(topic));
       }
 
       if (m_messageQueue->isSuspended()) {
         size_t bufferSize = m_messageQueue->size();
-        TRC_WARNING("Message queue is suspended as the connection is broken => msg will be buffered to be sent later " << PAR(bufferSize));
+        TRC_WARNING("Message queue is suspended as the connection is broken => msg will be buffered to be sent later " << PAR(bufferSize) << PAR(topic));
       }
 
       int retval = m_messageQueue->pushToQueue(std::make_pair(topic, msg));

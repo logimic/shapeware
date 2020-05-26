@@ -80,7 +80,7 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(url));
       
 
-      FILE* file = fopen(fname.c_str(), "w");
+      FILE* file = fopen(fname.c_str(), "wb");
       if (!file)
         THROW_EXC_TRC_WAR(std::logic_error, "Could not open output file: " << PAR(fname));
 
