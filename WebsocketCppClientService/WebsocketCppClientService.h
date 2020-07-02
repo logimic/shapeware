@@ -40,6 +40,7 @@ namespace shape {
 
     void sendMessage(const std::vector<uint8_t> & msg) override;
     void sendMessage(const std::string& msg)  override;
+    void sendPing()  override;
 
     void connect(const std::string& uri) override;
     void close() override;

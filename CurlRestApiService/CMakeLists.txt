@@ -1,6 +1,10 @@
 project(CurlRestApiService)
 
 find_package(CURL REQUIRED)
+if(WIN32)
+  # needed if build from vcpkg
+  find_package(ZLIB)
+endif()
 
 set(COMPONENT shape::CurlRestApiService)
 DeclareShapeComponent(${COMPONENT})
@@ -32,8 +36,8 @@ if(WIN32)
 	install(
 		FILES
 			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/libcurl-d.dll"
-			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/SSLEAY32.dll"
-			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/LIBEAY32.dll"
+			#"$<TARGET_FILE_DIR:${PROJECT_NAME}>/SSLEAY32.dll"
+			#"$<TARGET_FILE_DIR:${PROJECT_NAME}>/LIBEAY32.dll"
 			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/zlibd1.dll"
 		CONFIGURATIONS Debug
 		DESTINATION "\${CMAKE_INSTALL_CONFIG_NAME}/${PROJECT_INSTALL_PREFIX}/bin"
@@ -42,8 +46,8 @@ if(WIN32)
 	install(
 		FILES
 			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/libcurl.dll"
-			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/SSLEAY32.dll"
-			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/LIBEAY32.dll"
+			#"$<TARGET_FILE_DIR:${PROJECT_NAME}>/SSLEAY32.dll"
+			#"$<TARGET_FILE_DIR:${PROJECT_NAME}>/LIBEAY32.dll"
 			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/zlib1.dll"
 		CONFIGURATIONS Release
 		DESTINATION "\${CMAKE_INSTALL_CONFIG_NAME}/${PROJECT_INSTALL_PREFIX}/bin"
