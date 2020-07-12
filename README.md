@@ -24,6 +24,7 @@ Install via apt-get:
 ```
 $ sudo apt-get install libcurl4-openssl-dev
 $ sudo apt-get install libzmqpp-dev
+$ sudo apt-get install libpaho-mqtt-dev
 
 
 ```
