@@ -726,6 +726,13 @@ namespace shape {
       if (response) {
         std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
+        /** For publish, the message being sent to the server. */
+        //struct
+        //{
+        //  MQTTAsync_message message;
+        //  char* destinationName;
+        //} pub;
+
         auto found = m_publishContextMap.find(response->token);
         if (found != m_publishContextMap.end()) {
           auto & pc = found->second;
@@ -983,11 +990,8 @@ namespace shape {
 
     void setCertificate(const IMqttService::Certificates& cert)
     {
-      //TODO
-      std::string dataDir = m_iLaunchService->getDataDir();
-      //m_trustStore = m_trustStore.empty() ? "" : dataDir + "/cert/" + m_trustStore;
-      m_keyStore = dataDir + "/cert/" + cert.certificate;
-      m_privateKey = dataDir + "/cert/" + cert.privateKey;
+      m_keyStore = cert.certificate;
+      m_privateKey = cert.privateKey;
     }
 
     void modify(const shape::Properties *props)
