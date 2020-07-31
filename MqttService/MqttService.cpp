@@ -157,10 +157,10 @@ namespace shape {
 
     std::thread m_connectThread;
 
-    MQTTAsync_createOptions m_create_opts = MQTTAsync_createOptions_initializer;
-    MQTTAsync_connectOptions m_conn_opts = MQTTAsync_connectOptions_initializer;
-    MQTTAsync_SSLOptions m_ssl_opts = MQTTAsync_SSLOptions_initializer;
-    MQTTAsync_disconnectOptions m_disc_opts = MQTTAsync_disconnectOptions_initializer;
+    //MQTTAsync_createOptions m_create_opts = MQTTAsync_createOptions_initializer;
+    //MQTTAsync_connectOptions m_conn_opts = MQTTAsync_connectOptions_initializer;
+    //MQTTAsync_SSLOptions m_ssl_opts = MQTTAsync_SSLOptions_initializer;
+    //MQTTAsync_disconnectOptions m_disc_opts = MQTTAsync_disconnectOptions_initializer;
     //MQTTAsync_responseOptions m_subs_opts = MQTTAsync_responseOptions_initializer;
     //MQTTAsync_responseOptions m_send_opts = MQTTAsync_responseOptions_initializer;
 
@@ -188,7 +188,7 @@ namespace shape {
     /////////////////////////
 
     //------------------------
-    void create(const std::string& clientId)
+    void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars())
     {
       TRC_FUNCTION_ENTER(PAR(clientId));
 
@@ -196,11 +196,19 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, PAR(clientId) << " already created. Was IMqttService::create(clientId) called ealrlier?" );
       }
 
+      // init connection options
+      MQTTAsync_createOptions create_opts = MQTTAsync_createOptions_initializer;
+      create_opts.sendWhileDisconnected = 1;
+
+      if (!cp.brokerAddress.empty()) m_mqttBrokerAddr = cp.brokerAddress;
+      if (!cp.certificate.empty()) m_keyStore = cp.certificate;
+      if (!cp.privateKey.empty()) m_privateKey = cp.privateKey;
+
       m_mqttClientId = clientId;
 
       int retval;
       if ((retval = MQTTAsync_createWithOptions(&m_client, m_mqttBrokerAddr.c_str(),
-        m_mqttClientId.c_str(), m_mqttPersistence, NULL, &m_create_opts)) != MQTTASYNC_SUCCESS) {
+        m_mqttClientId.c_str(), m_mqttPersistence, NULL, &create_opts)) != MQTTASYNC_SUCCESS) {
         THROW_EXC_TRC_WAR(std::logic_error, "MQTTClient_create() failed: " << PAR(retval));
       }
 
@@ -249,11 +257,17 @@ namespace shape {
       if (m_connectThread.joinable())
         m_connectThread.join();
 
-      TRC_WARNING("Disconnect: => Message queue is suspended");
+      TRC_WARNING(PAR(m_mqttClientId) << " Disconnect: => Message queue is suspended ");
       m_messageQueue->suspend();
 
+      // init disconnect options
+      MQTTAsync_disconnectOptions disc_opts = MQTTAsync_disconnectOptions_initializer;
+      disc_opts.onSuccess = s_onDisconnect;
+      disc_opts.onFailure = s_onDisconnectFailure;
+      disc_opts.context = this;
+
       int retval;
-      if ((retval = MQTTAsync_disconnect(m_client, &m_disc_opts)) != MQTTASYNC_SUCCESS) {
+      if ((retval = MQTTAsync_disconnect(m_client, &disc_opts)) != MQTTASYNC_SUCCESS) {
         TRC_WARNING("Failed to start disconnect: " << PAR(retval));
       }
 
@@ -467,8 +481,37 @@ namespace shape {
 
 
       while (true) {
-        TRC_DEBUG("Connecting: " << PAR(m_mqttBrokerAddr) << PAR(m_mqttClientId));
-        if ((retval = MQTTAsync_connect(m_client, &m_conn_opts)) == MQTTASYNC_SUCCESS) {
+        // init connection options
+        MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
+        MQTTAsync_SSLOptions ssl_opts = MQTTAsync_SSLOptions_initializer;
+
+        conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
+        conn_opts.cleansession = 1;
+        conn_opts.connectTimeout = m_mqttConnectTimeout;
+        conn_opts.username = m_mqttUser.c_str();
+        conn_opts.password = m_mqttPassword.c_str();
+        conn_opts.onSuccess = s_onConnect;
+        conn_opts.onFailure = s_onConnectFailure;
+        conn_opts.context = this;
+
+        // init ssl options if required
+        if (m_mqttEnabledSSL) {
+          ssl_opts.enableServerCertAuth = true;
+          if (!m_trustStore.empty()) ssl_opts.trustStore = m_trustStore.c_str();
+          if (!m_keyStore.empty()) ssl_opts.keyStore = m_keyStore.c_str();
+          if (!m_privateKey.empty()) ssl_opts.privateKey = m_privateKey.c_str();
+          if (!m_privateKeyPassword.empty()) ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
+          if (!m_enabledCipherSuites.empty()) ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
+          ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
+          conn_opts.ssl = &ssl_opts;
+        }
+
+        TRC_DEBUG("Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
+          << NAME_PAR(keyStore, (ssl_opts.keyStore ? ssl_opts.keyStore : ""))
+          << NAME_PAR(privateKey, (ssl_opts.privateKey ? ssl_opts.privateKey : ""))
+          );
+
+        if ((retval = MQTTAsync_connect(m_client, &conn_opts)) == MQTTASYNC_SUCCESS) {
         }
         else {
           TRC_WARNING("MQTTAsync_connect() failed: " << PAR(retval));
@@ -545,7 +588,7 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER("");
       if (response) {
-        TRC_WARNING("Connect failed: " << PAR(response->code) << NAME_PAR(errmsg, (response->message ? response->message : "-")));
+        TRC_WARNING("Connect failed: " << PAR(m_mqttClientId) << PAR(response->code) << NAME_PAR(errmsg, (response->message ? response->message : "-")));
       }
 
       {
@@ -936,36 +979,6 @@ namespace shape {
         return publishFromQueue(pc);
       });
 
-      // init connection options
-      m_create_opts.sendWhileDisconnected = 1;
-
-      // init connection options
-      m_conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
-      m_conn_opts.cleansession = 1;
-      m_conn_opts.connectTimeout = m_mqttConnectTimeout;
-      m_conn_opts.username = m_mqttUser.c_str();
-      m_conn_opts.password = m_mqttPassword.c_str();
-      m_conn_opts.onSuccess = s_onConnect;
-      m_conn_opts.onFailure = s_onConnectFailure;
-      m_conn_opts.context = this;
-
-      // init ssl options if required
-      if (m_mqttEnabledSSL) {
-        m_ssl_opts.enableServerCertAuth = true;
-        if (!m_trustStore.empty()) m_ssl_opts.trustStore = m_trustStore.c_str();
-        if (!m_keyStore.empty()) m_ssl_opts.keyStore = m_keyStore.c_str();
-        if (!m_privateKey.empty()) m_ssl_opts.privateKey = m_privateKey.c_str();
-        if (!m_privateKeyPassword.empty()) m_ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
-        if (!m_enabledCipherSuites.empty()) m_ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
-        m_ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
-        m_conn_opts.ssl = &m_ssl_opts;
-      }
-
-      // init disconnect options
-      m_disc_opts.onSuccess = s_onDisconnect;
-      m_disc_opts.onFailure = s_onDisconnectFailure;
-      m_disc_opts.context = this;
-
       TRC_FUNCTION_LEAVE("")
     }
 
@@ -986,12 +999,6 @@ namespace shape {
       delete m_messageQueue;
 
       TRC_FUNCTION_LEAVE("")
-    }
-
-    void setCertificate(const IMqttService::Certificates& cert)
-    {
-      m_keyStore = cert.certificate;
-      m_privateKey = cert.privateKey;
     }
 
     void modify(const shape::Properties *props)
@@ -1079,14 +1086,9 @@ namespace shape {
     TRC_FUNCTION_LEAVE("")
   }
 
-  void MqttService::setCertificate(const Certificates& cert)
+  void MqttService::create(const std::string& clientId, const ConnectionPars& cp)
   {
-    m_impl->setCertificate(cert);
-  }
-
-  void MqttService::create(const std::string& clientId)
-  {
-    m_impl->create(clientId);
+    m_impl->create(clientId, cp);
   }
 
   void MqttService::connect()

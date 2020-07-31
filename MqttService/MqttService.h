@@ -30,8 +30,7 @@ namespace shape {
     MqttService();
     virtual ~MqttService();
     
-    void setCertificate(const Certificates& cert) override;
-    void create(const std::string& clientId) override;
+    void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars()) override;
     void connect() override;
     void disconnect() override;
     bool isReady() const override;

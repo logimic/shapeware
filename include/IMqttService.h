@@ -19,15 +19,15 @@ namespace shape {
 
     virtual ~IMqttService() {};
 
-    class Certificates
+    class ConnectionPars
     {
     public:
+      std::string brokerAddress;
       std::string certificate;
       std::string privateKey;
     };
 
-    virtual void setCertificate(const Certificates& cert) = 0;
-    virtual void create(const std::string& clientId) = 0;
+    virtual void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars()) = 0;
     virtual void connect() = 0;
     virtual void disconnect() = 0;
     virtual bool isReady() const = 0;
