@@ -31,8 +31,13 @@ namespace shape {
     virtual ~MqttService();
     
     void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars()) override;
+    
     void connect() override;
+    void connect(MqttOnConnectHandlerFunc onConnect) override;
+
     void disconnect() override;
+    void disconnect(MqttOnDisconnectHandlerFunc onDisconnect) override;
+
     bool isReady() const override;
     
     void subscribe(const std::string& topic, int qos = 0) override;

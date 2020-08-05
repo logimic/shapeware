@@ -239,6 +239,12 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
+    void connect(MqttOnConnectHandlerFunc onConnect)
+    {
+      m_mqttOnConnectHandlerFunc = onConnect;
+      connect();
+    }
+
     //------------------------
     void disconnect()
     {
@@ -279,6 +285,12 @@ namespace shape {
       TRC_INFORMATION("MQTT disconnected");
 
       TRC_FUNCTION_LEAVE("");
+    }
+
+    void disconnect(MqttOnDisconnectHandlerFunc onDisconnect)
+    {
+      m_mqttOnDisconnectHandlerFunc = onDisconnect;
+      disconnect();
     }
 
     bool isReady() const
@@ -611,7 +623,7 @@ namespace shape {
     }
     void onSubscribe(MQTTAsync_successData* response)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : -1)) << NAME_PAR(qos, (response ? response->alt.qos : -1)));
 
       MQTTAsync_token token = 0;
       int qos = 0;
@@ -1096,9 +1108,19 @@ namespace shape {
     m_impl->connect();
   }
 
+  void MqttService::connect(MqttOnConnectHandlerFunc onConnect)
+  {
+    m_impl->connect(onConnect);
+  }
+
   void MqttService::disconnect()
   {
     m_impl->disconnect();
+  }
+
+  void MqttService::disconnect(MqttOnDisconnectHandlerFunc onDisconnect)
+  {
+    m_impl->disconnect(onDisconnect);
   }
 
   bool MqttService::isReady() const

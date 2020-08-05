@@ -28,8 +28,13 @@ namespace shape {
     };
 
     virtual void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars()) = 0;
+    
     virtual void connect() = 0;
+    virtual void connect(MqttOnConnectHandlerFunc onConnect) = 0;
+
     virtual void disconnect() = 0;
+    virtual void disconnect(MqttOnDisconnectHandlerFunc onDisconnect) = 0;
+
     virtual bool isReady() const = 0;
     
     // obsolete use other subscribe version
