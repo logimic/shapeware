@@ -28,11 +28,19 @@ namespace shape {
     BufferService();
     virtual ~BufferService();
 
+    void registerProcessFunc(IBufferService::ProcessFunc func) override;
+    void unregisterProcessFunc() override;
+    void start() override;
+    void stop() override;
+
+    void suspend() override;
+    void recover() override;
+
     bool empty() override;
     std::size_t size() const override;
-    std::string front() const override;
-    std::string back() const override;
-    void push(const std::string & str) override;
+    Record front() const override;
+    Record back() const override;
+    void push(const Record & rec) override;
     void pop() override;
     void load() override;
     void save() override;

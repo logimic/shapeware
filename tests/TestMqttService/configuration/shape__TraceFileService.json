@@ -1,0 +1,18 @@
+{
+  "component": "shape::TraceFileService",
+  "instance": "shape::TraceFileService-TestMqttService",
+
+  "path": "",
+  "filename": "TestMqttService.txt",
+
+  "VerbosityLevels": [
+    {
+      "channel": 0,
+      "level": "DBG"
+    },
+    {
+      "channel": 43,
+      "level": "DBG"
+    }
+  ]
+}

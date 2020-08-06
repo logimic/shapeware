@@ -79,54 +79,66 @@ namespace shape {
       if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_URL, url.c_str()))
         THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(url));
       
+      FILE* file = nullptr;
 
-      FILE* file = fopen(fname.c_str(), "w");
-      if (!file)
-        THROW_EXC_TRC_WAR(std::logic_error, "Could not open output file: " << PAR(fname));
+      try {
+        file = fopen(fname.c_str(), "wb");
 
-      // if redirected, follow redirection
-      if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L))
-        THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(CURLOPT_FOLLOWLOCATION));
+        if (!file)
+          THROW_EXC_TRC_WAR(std::logic_error, "Could not open output file: " << PAR(fname));
 
-      // When data arrives, curl will call writeCallback.
-      if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback))
-        THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(CURLOPT_WRITEFUNCTION));
+        // if redirected, follow redirection
+        if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L))
+          THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(CURLOPT_FOLLOWLOCATION));
 
-      // The last argument to writeCallback will be our file:
-      if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)file))
-        THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(CURLOPT_WRITEDATA));
+        // When data arrives, curl will call writeCallback.
+        if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback))
+          THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(CURLOPT_WRITEFUNCTION));
 
-      /*
-      * If you want to connect to a site who isn't using a certificate that is
-      * signed by one of the certs in the CA bundle you have, you can skip the
-      * verification of the server's certificate. This makes the connection
-      * A LOT LESS SECURE.
-      *
-      * If you have a CA cert for the server stored someplace else than in the
-      * default bundle, then the CURLOPT_CAPATH option might come handy for
-      * you.
-      */
-      if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L))
-        THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(CURLOPT_SSL_VERIFYPEER));
+        // The last argument to writeCallback will be our file:
+        if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)file))
+          THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(CURLOPT_WRITEDATA));
 
-      /*
-      * If the site you're connecting to uses a different host name that what
-      * they have mentioned in their server certificate's commonName (or
-      * subjectAltName) fields, libcurl will refuse to connect. You can skip
-      * this check, but this will make the connection less secure.
-      */
-      // curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+        /*
+        * If you want to connect to a site who isn't using a certificate that is
+        * signed by one of the certs in the CA bundle you have, you can skip the
+        * verification of the server's certificate. This makes the connection
+        * A LOT LESS SECURE.
+        *
+        * If you have a CA cert for the server stored someplace else than in the
+        * default bundle, then the CURLOPT_CAPATH option might come handy for
+        * you.
+        */
+        if (CURLE_OK != curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L))
+          THROW_EXC_TRC_WAR(std::logic_error, "Failed curl set option: " << PAR(CURLOPT_SSL_VERIFYPEER));
 
-      // Perform the request, res will get the return code
-      CURLcode res = curl_easy_perform(curl);
-      // Check for errors
-      if (res != CURLE_OK)
-        THROW_EXC_TRC_WAR(std::logic_error, "Failed curl perform: " << PAR(res) << NAME_PAR(strerror, curl_easy_strerror(res)));
+        /*
+        * If the site you're connecting to uses a different host name that what
+        * they have mentioned in their server certificate's commonName (or
+        * subjectAltName) fields, libcurl will refuse to connect. You can skip
+        * this check, but this will make the connection less secure.
+        */
+        // curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
 
-      // always cleanup
-      curl_easy_cleanup(curl);
+        // Perform the request, res will get the return code
+        CURLcode res = curl_easy_perform(curl);
+        // Check for errors
+        if (res != CURLE_OK)
+          THROW_EXC_TRC_WAR(std::logic_error, "Failed curl perform: " << PAR(res) << NAME_PAR(strerror, curl_easy_strerror(res)));
 
-      fclose(file);
+        // always cleanup
+        curl_easy_cleanup(curl);
+      }
+      catch (...) {
+        if (file) {
+          fclose(file);
+        }
+        throw;
+      }
+
+      if (file) {
+        fclose(file);
+      }
 
       TRC_FUNCTION_LEAVE("");
     }

@@ -49,7 +49,7 @@ inline MQDESCR openMqRead(const std::string name, unsigned bufsize)
   TRC_DEBUG("required attributes" << PAR(req_attr.mq_maxmsg) << PAR(req_attr.mq_msgsize))
     desc = mq_open(name.c_str(), O_RDONLY | O_CREAT, QUEUE_PERMISSIONS, &req_attr);
 
-  if (desc > 0) {
+  if ((long)desc > 0) {
 
     struct mq_attr act_attr;
     int res = mq_getattr(desc, &act_attr);
@@ -60,7 +60,7 @@ inline MQDESCR openMqRead(const std::string name, unsigned bufsize)
           res = mq_unlink(name.c_str());
           if (res == 0 || errno == ENOENT) {
             desc = mq_open(name.c_str(), O_RDONLY | O_CREAT, QUEUE_PERMISSIONS, &req_attr);
-            if (desc < 0) {
+            if ((long)desc < 0) {
               TRC_WARNING("mq_open() after mq_unlink() failed:" << PAR(name) << PAR(desc))
             }
           }
@@ -95,7 +95,7 @@ inline MQDESCR openMqWrite(const std::string name, unsigned bufsize)
   TRC_DEBUG("explicit attributes" << PAR(attr.mq_maxmsg) << PAR(attr.mq_msgsize))
     mqd_t retval = mq_open(name.c_str(), O_WRONLY);
 
-  if (retval > 0) {
+  if ((long)retval > 0) {
     struct mq_attr nwattr;
     int nwretval = mq_getattr(retval, &nwattr);
     TRC_DEBUG("set attributes" << PAR(nwretval) << PAR(nwattr.mq_maxmsg) << PAR(nwattr.mq_msgsize))
@@ -186,8 +186,8 @@ namespace shape {
     std::thread m_listenThread;
     std::mutex m_connectMtx;
 
-    MQDESCR m_localMqHandle = INVALID_HANDLE_VALUE;
-    MQDESCR m_remoteMqHandle = INVALID_HANDLE_VALUE;
+    MQDESCR m_localMqHandle = (MQDESCR)INVALID_HANDLE_VALUE;
+    MQDESCR m_remoteMqHandle = (MQDESCR)INVALID_HANDLE_VALUE;
 
     unsigned char* m_rx;
     unsigned m_bufsize = IQRF_MQ_BUFFER_SIZE;
@@ -334,7 +334,7 @@ namespace shape {
           bool fSuccess(false);
 
           m_localMqHandle = openMqRead(m_localMqName, m_bufsize);
-          if (m_localMqHandle == INVALID_HANDLE_VALUE) {
+          if (m_localMqHandle == (MQDESCR)INVALID_HANDLE_VALUE) {
             THROW_EXC_TRC_WAR(std::logic_error, "openMqRead() failed: " << NAME_PAR(GetLastError, GetLastError()));
           }
           TRC_INFORMATION("openMqRead() opened: " << PAR(m_localMqName));
@@ -399,7 +399,7 @@ namespace shape {
 
         // Open write channel to client
         m_remoteMqHandle = openMqWrite(m_remoteMqName, m_bufsize);
-        if (m_remoteMqHandle == INVALID_HANDLE_VALUE) {
+        if (m_remoteMqHandle == (MQDESCR)INVALID_HANDLE_VALUE) {
           TRC_WARNING("openMqWrite() failed: " << NAME_PAR(GetLastError, GetLastError()));
           //if (GetLastError() != ERROR_PIPE_BUSY)
         }

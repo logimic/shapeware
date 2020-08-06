@@ -61,6 +61,7 @@ namespace shape {
     /// The message is send outside
     virtual void sendMessage(const std::vector<uint8_t> & msg) = 0;
     virtual void sendMessage(const std::string& msg) = 0;
+    virtual void sendPing() = 0;
 
     virtual void connect(const std::string& uri) = 0;
     virtual void close() = 0;

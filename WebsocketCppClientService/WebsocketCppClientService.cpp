@@ -182,7 +182,7 @@ namespace shape {
 
     void sendMessage(const std::string & msg)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(msg));
 
       websocketpp::lib::error_code ec;
       m_client.send(m_connection_hdl, msg, websocketpp::frame::opcode::text, ec); // send text message.
@@ -191,6 +191,19 @@ namespace shape {
       }
 
       TRC_FUNCTION_LEAVE("");
+    }
+
+    void sendPing()
+    {
+      //TRC_FUNCTION_ENTER("");
+
+      websocketpp::lib::error_code ec;
+      m_client.ping(m_connection_hdl, "ping", ec); // send ping message.
+      if (ec) {
+        TRC_WARNING("Cannot send ping messgae: " << ec.message());
+      }
+
+      //TRC_FUNCTION_LEAVE("");
     }
 
     void connect(const std::string & uri)
@@ -364,6 +377,11 @@ namespace shape {
   void WebsocketCppClientService::sendMessage(const std::string & msg)
   {
     m_imp->sendMessage(msg);
+  }
+
+  void WebsocketCppClientService::sendPing()
+  {
+    m_imp->sendPing();
   }
 
   void WebsocketCppClientService::connect(const std::string & uri)

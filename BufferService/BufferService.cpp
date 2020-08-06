@@ -47,8 +47,6 @@ namespace shape {
     
     ILaunchService* m_iLaunchService = nullptr;
 
-    std::queue<std::string> m_queue;
-
     bool m_persistent = true;
     bool m_maxSize = 2^30; //GB
     int64_t m_maxDuration = 0;
@@ -56,6 +54,14 @@ namespace shape {
     std::string m_instance;
     std::string m_cacheDir;
     std::string m_fname;
+
+    std::queue<IBufferService::Record> m_queue;
+    std::condition_variable m_cond;
+    bool m_pushed;
+    bool m_runWorker;
+    std::thread m_worker;
+
+    ProcessFunc m_processFunc;
 
 
   ///////////////////////////////
@@ -66,7 +72,94 @@ namespace shape {
 
     ~Imp()
     {
+      stop();
     }
+
+    void registerProcessFunc(IBufferService::ProcessFunc func)
+    {
+      TRC_FUNCTION_ENTER("");
+      std::unique_lock<std::mutex> lck(m_mux);
+      if (!m_processFunc) {
+        m_processFunc = func;
+      }
+      start();
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void unregisterProcessFunc()
+    {
+      TRC_FUNCTION_ENTER("");
+      stop();
+      m_processFunc = nullptr;
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void start()
+    {
+      TRC_FUNCTION_ENTER("");
+      m_pushed = false;
+      m_runWorker = true;
+      m_worker = std::thread([&]() { worker(); });
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void stop()
+    {
+      TRC_FUNCTION_ENTER("");
+      {
+        std::unique_lock<std::mutex> lck(m_mux);
+        m_runWorker = false;
+        m_pushed = true;
+      }
+      m_cond.notify_all();
+
+      if (m_worker.joinable())
+        m_worker.join();
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    void suspend()
+    {
+      //TODO
+    }
+
+    void recover()
+    {
+      //TODO
+    }
+
+    /// Worker thread function
+    void worker()
+    {
+      TRC_FUNCTION_ENTER("");
+      std::unique_lock<std::mutex> lck(m_mux, std::defer_lock);
+
+      while (m_runWorker) {
+
+        //wait for something in the queue
+        lck.lock();
+        m_cond.wait(lck, [&] { return m_pushed; }); //lock is released in wait
+        //lock is reacquired here
+        m_pushed = false;
+
+        while (m_runWorker) {
+          if (!m_queue.empty()) {
+            auto rec = m_queue.front();
+            m_queue.pop();
+            lck.unlock();
+            m_processFunc(rec);
+          }
+          else {
+            lck.unlock();
+            break;
+          }
+          lck.lock(); //lock for next iteration
+        }
+      }
+      TRC_FUNCTION_LEAVE("");
+    }
+
 
     bool empty()
     {
@@ -86,29 +179,42 @@ namespace shape {
       return retval;
     }
 
-    std::string front() const
+    IBufferService::Record front() const
     {
       TRC_FUNCTION_ENTER("");
       std::unique_lock<std::mutex> lck(m_mux);
-      std::string str = m_queue.front();
+      IBufferService::Record rec = m_queue.front();
       TRC_FUNCTION_LEAVE("");
-      return str;
+      return rec;
     }
 
-    std::string back() const
+    IBufferService::Record back() const
     {
       TRC_FUNCTION_ENTER("");
       std::unique_lock<std::mutex> lck(m_mux);
-      std::string str = m_queue.back();
+      IBufferService::Record rec = m_queue.back();
       TRC_FUNCTION_LEAVE("");
-      return str;
+      return rec;
     }
 
-    void push(const std::string & str)
+    void push(const IBufferService::Record & rec)
     {
       TRC_FUNCTION_ENTER("");
       std::unique_lock<std::mutex> lck(m_mux);
-      m_queue.push(str);
+      m_queue.push(rec);
+      
+      //TODO check stale in front() and possibly pop it
+
+      //int retval = 0;
+      //{
+      //  std::unique_lock<std::mutex> lck(m_mux);
+      //  m_queue.push(rec);
+      //  //retval = static_cast<uint8_t>(m_taskQueue.size());
+      //  m_pushed = true;
+      //}
+      //m_cond.notify_all();
+      //return retval;
+      
       TRC_FUNCTION_LEAVE("")
     }
 
@@ -145,30 +251,48 @@ namespace shape {
 
         while (ifs)
         {
-          size_t sz;
-          ifs.read((char*)(&sz), sizeof(sz));
+          IBufferService::Record rec;
+
+          // read timestamp
+          long long tst;
+          ifs.read((char*)(&tst), sizeof(tst));
+          rec.timestamp = tst;
+
           if (!ifs) {
+            // eof, break here
             break;
           }
-          if (ifs.bad()) {
-            THROW_EXC_TRC_WAR(std::logic_error, "Cannot read persistent buffer file: " PAR(m_fname));
-          }
 
-          if (sz > rbufSz) {
+          // read address
+          size_t sza;
+          ifs.read((char*)(&sza), sizeof(sza));
+         
+          if (sza > rbufSz) {
             // reallocate buffer
-            rbufSz = sz;
+            rbufSz = sza;
             rbuf.reset(shape_new char[rbufSz]);
           }
 
-          ifs.read(rbuf.get(), sz);
-          if (!ifs) {
-            break;
+          ifs.read(rbuf.get(), sza);
+          rec.address = std::string(rbuf.get(), sza);
+
+          // read content
+          size_t szc;
+          ifs.read((char*)(&szc), sizeof(szc));
+          if (szc > rbufSz) {
+            // reallocate buffer
+            rbufSz = szc;
+            rbuf.reset(shape_new char[rbufSz]);
           }
+          ifs.read(rbuf.get(), szc);
+          rec.content = std::vector<uint8_t>((uint8_t*)rbuf.get(), (uint8_t*)rbuf.get() + szc);
+
           if (ifs.bad()) {
             THROW_EXC_TRC_WAR(std::logic_error, "Cannot write persistent buffer file: " PAR(m_fname));
           }
 
-          m_queue.push(std::string(rbuf.get(), sz));
+          
+          m_queue.push(rec);
         }
 
         ifs.close();
@@ -192,16 +316,21 @@ namespace shape {
         
         while (!m_queue.empty())
         {
-          const std::string & str = m_queue.front();
-          size_t sz = str.size();
-          ofs.write((const char*)(&sz), sizeof(sz));
+          const IBufferService::Record & rec = m_queue.front();
+          ofs.write((const char*)(&rec.timestamp), sizeof(rec.timestamp));
+
+          size_t sza = rec.address.size();
+          ofs.write((const char*)(&sza), sizeof(sza));
+          ofs.write(rec.address.data(), sza);
+
+          size_t szc = rec.content.size();
+          ofs.write((const char*)(&szc), sizeof(szc));
+          ofs.write((const char*)rec.content.data(), szc);
+
           if (ofs.bad()) {
             THROW_EXC_TRC_WAR(std::logic_error, "Cannot write persistent buffer file: " PAR(m_fname));
           }
-          ofs.write(str.data(), str.size());
-          if (ofs.bad()) {
-            THROW_EXC_TRC_WAR(std::logic_error, "Cannot write persistent buffer file: " PAR(m_fname));
-          }
+
           m_queue.pop();
         }
         ofs.close();
@@ -319,6 +448,36 @@ namespace shape {
     delete m_imp;
   }
 
+  void BufferService::registerProcessFunc(IBufferService::ProcessFunc func)
+  {
+    m_imp->registerProcessFunc(func);
+  }
+
+  void BufferService::unregisterProcessFunc()
+  {
+    m_imp->unregisterProcessFunc();
+  }
+
+  void BufferService::start()
+  {
+    m_imp->start();
+  }
+  
+  void BufferService::stop()
+  {
+    m_imp->stop();
+  }
+
+  void BufferService::suspend()
+  {
+    m_imp->suspend();
+  }
+
+  void BufferService::recover()
+  {
+    m_imp->recover();
+  }
+
   bool BufferService::empty()
   {
     return m_imp->empty();
@@ -329,19 +488,19 @@ namespace shape {
     return m_imp->size();
   }
 
-  std::string BufferService::front() const
+  IBufferService::Record BufferService::front() const
   {
     return m_imp->front();
   }
 
-  std::string BufferService::back() const
+  IBufferService::Record BufferService::back() const
   {
     return m_imp->back();
   }
 
-  void BufferService::push(const std::string & str)
+  void BufferService::push(const Record & rec)
   {
-    m_imp->push(str);
+    m_imp->push(rec);
   }
 
   void BufferService::pop()
