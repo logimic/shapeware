@@ -30,13 +30,26 @@ namespace shape {
     MqttService();
     virtual ~MqttService();
     
-    void create(const std::string& clientId) override;
+    void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars()) override;
+    
     void connect() override;
+    void connect(MqttOnConnectHandlerFunc onConnect) override;
+
     void disconnect() override;
+    void disconnect(MqttOnDisconnectHandlerFunc onDisconnect) override;
+
     bool isReady() const override;
-    void subscribe(const std::string& topic) override;
-    void publish(const std::string& topic, const std::vector<uint8_t> & msg) override;
-    void publish(const std::string& topic, const std::string & msg) override;
+    
+    void subscribe(const std::string& topic, int qos = 0) override;
+    void subscribe(const std::string& topic, int qos
+      , MqttOnSubscribeQosHandlerFunc onSubscribe, MqttMessageStrHandlerFunc onMessage) override;
+    
+    void publish(const std::string& topic, const std::vector<uint8_t> & msg, int qos = 0) override;
+    void publish(const std::string& topic, const std::string & msg, int qos = 0) override;
+    void publish(const std::string& topic, int qos, const std::vector<uint8_t> & msg
+      , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery) override;
+    void publish(const std::string& topic, int qos, const std::string & msg
+      , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery) override;
 
     void registerMessageHandler(MqttMessageHandlerFunc hndl) override;
     void unregisterMessageHandler() override;

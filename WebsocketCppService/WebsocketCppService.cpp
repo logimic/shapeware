@@ -25,7 +25,7 @@
 #define ASIO_STANDALONE
 #define _WEBSOCKETPP_CPP11_INTERNAL_
 
-#include <websocketpp/config/asio_no_tls.hpp>
+//#include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
 
@@ -311,7 +311,7 @@ namespace shape {
         // `openssl dhparam -out dh.pem 2048`
         // Mozilla Intermediate suggests 1024 as the minimum size to use
         // Mozilla Modern suggests 2048 as the minimum size to use.
-        //ctx->use_tmp_dh_file("./tls/dh.pem");
+        ctx->use_tmp_dh_file("./tls/dh.pem");
 
         std::string ciphers;
 
@@ -536,9 +536,8 @@ namespace shape {
       TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart) << PAR(m_acceptOnlyLocalhost));
 
       // set up access channels to only log interesting things
-      m_server.clear_access_channels(websocketpp::log::alevel::all);
-      m_server.set_access_channels(websocketpp::log::alevel::access_core);
-      m_server.set_access_channels(websocketpp::log::alevel::app);
+      m_server.set_access_channels(websocketpp::log::alevel::all);
+      m_server.set_access_channels(websocketpp::log::elevel::all);
 
       // Set custom logger (ostream-based).
       m_server.get_alog().set_ostream(&m_wsLogerOs);
@@ -569,7 +568,8 @@ namespace shape {
       });
 
       m_server.set_tls_init_handler([&](connection_hdl hdl)->context_ptr {
-        return on_tls_init(MOZILLA_INTERMEDIATE, hdl);
+        //return on_tls_init(MOZILLA_INTERMEDIATE, hdl);
+        return on_tls_init(MOZILLA_MODERN, hdl);
       });
 
 //??????????????

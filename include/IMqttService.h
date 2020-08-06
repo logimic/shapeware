@@ -12,17 +12,42 @@ namespace shape {
     typedef std::function<void(const std::string& topic, const std::string & msg)> MqttMessageStrHandlerFunc;
     typedef std::function<void()> MqttOnConnectHandlerFunc;
     typedef std::function<void(const std::string& topic, bool result)> MqttOnSubscribeHandlerFunc;
+    typedef std::function<void(const std::string& topic, int qos, bool result)> MqttOnSubscribeQosHandlerFunc;
+    typedef std::function<void(const std::string& topic, int qos, bool result)> MqttOnSendHandlerFunc;
+    typedef std::function<void(const std::string& topic, int qos, bool result)> MqttOnDeliveryHandlerFunc;
     typedef std::function<void()> MqttOnDisconnectHandlerFunc;
 
     virtual ~IMqttService() {};
 
-    virtual void create(const std::string& clientId) = 0;
+    class ConnectionPars
+    {
+    public:
+      std::string brokerAddress;
+      std::string certificate;
+      std::string privateKey;
+    };
+
+    virtual void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars()) = 0;
+    
     virtual void connect() = 0;
+    virtual void connect(MqttOnConnectHandlerFunc onConnect) = 0;
+
     virtual void disconnect() = 0;
+    virtual void disconnect(MqttOnDisconnectHandlerFunc onDisconnect) = 0;
+
     virtual bool isReady() const = 0;
-    virtual void subscribe(const std::string& topic) = 0;
-    virtual void publish(const std::string& topic, const std::vector<uint8_t> & msg) = 0;
-    virtual void publish(const std::string& topic, const std::string & msg) = 0;
+    
+    // obsolete use other subscribe version
+    virtual void subscribe(const std::string& topic, int qos = 0) = 0;
+    virtual void subscribe(const std::string& topic, int qos
+      , MqttOnSubscribeQosHandlerFunc onSubscribe, MqttMessageStrHandlerFunc onMessage) = 0;
+    
+    virtual void publish(const std::string& topic, const std::vector<uint8_t> & msg, int qos = 0) = 0;
+    virtual void publish(const std::string& topic, const std::string & msg, int qos = 0) = 0;
+    virtual void publish(const std::string& topic, int qos, const std::vector<uint8_t> & msg
+      , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery) = 0;
+    virtual void publish(const std::string& topic, int qos, const std::string & msg
+    , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery) = 0;
 
     virtual void registerMessageHandler(MqttMessageHandlerFunc hndl) = 0;
     virtual void unregisterMessageHandler() = 0;
