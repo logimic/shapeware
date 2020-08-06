@@ -302,14 +302,16 @@ namespace shape {
             asio::ssl::context::single_dh_use);
         }
         //ctx->set_password_callback(bind(&get_password));
-        ctx->use_certificate_chain_file("cert.pem");
-        ctx->use_private_key_file("key.pem", asio::ssl::context::pem);
+        ctx->use_certificate_chain_file("./tls/cert.pem");
+        ctx->use_private_key_file("./tls/key.pem", asio::ssl::context::pem);
+        //ctx->use_certificate_chain_file("./tls/server.pem");
+        //ctx->use_private_key_file("./tls/server.pem", asio::ssl::context::pem);
 
         // Example method of generating this file:
         // `openssl dhparam -out dh.pem 2048`
         // Mozilla Intermediate suggests 1024 as the minimum size to use
         // Mozilla Modern suggests 2048 as the minimum size to use.
-        //ctx->use_tmp_dh_file("dh.pem");
+        //ctx->use_tmp_dh_file("./tls/dh.pem");
 
         std::string ciphers;
 
