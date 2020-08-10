@@ -25,9 +25,15 @@
 #define ASIO_STANDALONE
 #define _WEBSOCKETPP_CPP11_INTERNAL_
 
-//#include <websocketpp/config/asio_no_tls.hpp>
+#include <websocketpp/config/asio_no_tls.hpp>
 #include <websocketpp/config/asio.hpp>
 #include <websocketpp/server.hpp>
+
+#include "rapidjson/rapidjson.h"
+#include "rapidjson/document.h"
+#include "rapidjson/pointer.h"
+
+#include "LogStream.h"
 
 #include "shape__WebsocketCppService.hxx"
 
@@ -41,32 +47,112 @@ TRC_INIT_MODULE(shape::WebsocketCppService);
 namespace shape {
 
   typedef websocketpp::connection_hdl connection_hdl;
-  //typedef websocketpp::server<websocketpp::config::asio> WsServer;
-  typedef websocketpp::server<websocketpp::config::asio_tls> WsServer;
-
-  // pull out the type of messages sent by our config
-  typedef websocketpp::config::asio::message_type::ptr message_ptr;
+  typedef websocketpp::config::core::message_type::ptr message_ptr;
+  
   typedef websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context> context_ptr;
-
-  class LogStream : public std::streambuf {
-  private:
-    std::string buffer;
-
-  protected:
-    int overflow(int ch) override {
-      buffer.push_back((char)ch);
-      if (ch == '\n') {
-        TRC_INFORMATION("Websocketpp: " << buffer);
-        buffer.clear();
-      }
-      return ch;
-    }
-  };
 
   class WebsocketCppService::Imp
   {
   private:
-    WsServer m_server;
+    class WsServer
+    {
+    public:
+      WsServer()
+      {}
+
+      virtual ~WsServer() {}
+      virtual void run() = 0;
+      virtual bool is_listening() = 0;
+      virtual void listen(int m_port) = 0;
+      virtual void start_accept() = 0;
+      virtual void send(connection_hdl chdl, const std::string & msg) = 0;
+      virtual void close(connection_hdl chndl, const std::string & descr, const std::string & data) = 0;
+      virtual void stop_listening() = 0;
+      virtual void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) = 0;
+    };
+
+    template<typename T>
+    class WsServerTyped : public WsServer
+    {
+    public:
+      ~WsServerTyped() {}
+
+      void run() override
+      {
+        m_server.run();
+      }
+
+      bool is_listening() override
+      {
+        return m_server.is_listening();
+      }
+
+      void listen(int port) override
+      {
+        m_server.set_reuse_addr(true);
+        m_server.listen(port);
+      }
+
+      void start_accept() override
+      {
+        m_server.start_accept();
+      }
+
+      void send(connection_hdl chdl, const std::string & msg) override
+      {
+        websocketpp::lib::error_code ec;
+        m_server.send(chdl, msg, websocketpp::frame::opcode::text, ec); // send text message.
+        if (ec) {
+          auto conState = m_server.get_con_from_hdl(chdl)->get_state();
+          TRC_WARNING("Cannot send message: " << PAR(conState) << ec.message());
+        }
+      }
+
+      void close(connection_hdl chndl, const std::string & descr, const std::string & data) override
+      {
+        websocketpp::lib::error_code ec;
+        m_server.close(chndl, websocketpp::close::status::normal, data, ec); // send text message.
+        if (ec) { // we got an error
+           // Error closing websocket. Log reason using ec.message().
+          TRC_WARNING("close connection: " << PAR(descr) << ec.message());
+        }
+      }
+
+      void stop_listening() override
+      {
+        websocketpp::lib::error_code ec;
+        m_server.stop_listening(ec);
+        if (ec) {
+          // Failed to stop listening. Log reason using ec.message().
+          TRC_INFORMATION("Failed stop_listening: " << ec.message());
+        }
+      }
+
+      void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) override
+      {
+        auto con = m_server.get_con_from_hdl(chdl);
+
+        std::ostringstream os;
+        os << con->get_handle().lock().get();
+        connId = os.str();
+
+        uri = con->get_uri();
+      }
+
+      T & getServer()
+      {
+        return m_server;
+      }
+
+    private:
+      T m_server;
+    };
+
+    typedef WsServerTyped<websocketpp::server<websocketpp::config::asio>> WsServerPlain;
+    typedef WsServerTyped<websocketpp::server<websocketpp::config::asio_tls>> WsServerTls;
+
+    std::unique_ptr<WsServer> m_server;
+
     int m_port = 1338;
 
     std::mutex m_mux;
@@ -74,6 +160,10 @@ namespace shape {
 
     bool m_autoStart = true;
     bool m_acceptOnlyLocalhost = false;
+    bool m_wss = false;
+    std::string m_cert;
+    std::string m_key;
+
     bool m_runThd = false;
     std::thread m_thd;
 
@@ -108,7 +198,46 @@ namespace shape {
       return false;
     }
 
-    void on_message(connection_hdl hdl, WsServer::message_ptr msg)
+    template <typename T>
+    void initServer(T & server)
+    {
+      TRC_FUNCTION_ENTER("");
+
+      // set up access channels to only log interesting things
+      server.set_access_channels(websocketpp::log::alevel::all);
+      server.set_access_channels(websocketpp::log::elevel::all);
+
+      // Set custom logger (ostream-based).
+      server.get_alog().set_ostream(&m_wsLogerOs);
+      server.get_elog().set_ostream(&m_wsLogerOs);
+
+      // Initialize Asio
+      server.init_asio();
+
+      server.set_validate_handler([&](connection_hdl hdl)->bool {
+        return on_validate<T>(hdl);
+      });
+
+      server.set_fail_handler([&](connection_hdl hdl) {
+        TRC_FUNCTION_ENTER("on_fail(): ");
+        auto con = server.get_con_from_hdl(hdl);
+        websocketpp::lib::error_code ec = con->get_ec();
+        TRC_WARNING("on_fail(): Error: " << NAME_PAR(hdl, hdl.lock().get()) << " " << ec.message());
+        TRC_FUNCTION_LEAVE("");
+      });
+
+      server.set_close_handler([&](connection_hdl hdl) {
+        on_close(hdl);
+      });
+
+      server.set_message_handler([&](connection_hdl hdl, message_ptr msg) {
+        on_message(hdl, msg);
+      });
+
+      TRC_FUNCTION_LEAVE("")
+    }
+
+    void on_message(connection_hdl hdl, message_ptr msg)
     {
       TRC_FUNCTION_ENTER("");
 
@@ -146,21 +275,17 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
+    template <typename T>
     bool on_validate(connection_hdl hdl)
     {
       //TODO on_connection can be use instead, however we're ready for authentication by a token
       TRC_FUNCTION_ENTER("");
       bool valid = true;
 
-      //websocketpp::server<websocketpp::config::asio>::connection_ptr con = m_server.get_con_from_hdl(hdl);
-      WsServer::connection_ptr con = m_server.get_con_from_hdl(hdl);
+      std::string connId;
+      websocketpp::uri_ptr uri;
+      m_server->getConnParams(hdl, connId, uri);
 
-      //TODO provision id
-      std::ostringstream os;
-      os << con->get_handle().lock().get();
-      std::string connId = os.str();
-
-      websocketpp::uri_ptr uri = con->get_uri();
       std::string query = uri->get_query(); // returns empty string if no query string set.
       std::string host = uri->get_host();
 
@@ -202,16 +327,8 @@ namespace shape {
       return valid;
     }
 
-    void on_fail(connection_hdl hdl)
-    {
-      TRC_FUNCTION_ENTER("");
-      //websocketpp::server<websocketpp::config::asio>::connection_ptr con = m_server.get_con_from_hdl(hdl);
-      WsServer::connection_ptr con = m_server.get_con_from_hdl(hdl);
-      websocketpp::lib::error_code ec = con->get_ec();
-      TRC_WARNING("Error: " << NAME_PAR(hdl, hdl.lock().get()) << " " << ec.message());
-      TRC_FUNCTION_LEAVE("");
-    }
-
+#if 0
+    //TODO for future use
     void sendClose(const std::string& connId)
     {
       TRC_FUNCTION_ENTER(PAR(connId));
@@ -234,6 +351,7 @@ namespace shape {
 
       TRC_FUNCTION_LEAVE("");
     }
+#endif
 
     void on_close(connection_hdl hdl)
     {
@@ -258,18 +376,6 @@ namespace shape {
       }
       TRC_FUNCTION_LEAVE("");
     }
-    ///////////////////////////////
-    //?????????????????????????????
-    void on_http(connection_hdl hdl) {
-      WsServer::connection_ptr con = m_server.get_con_from_hdl(hdl);
-
-      con->set_body("Hello World!");
-      con->set_status(websocketpp::http::status_code::ok);
-    }
-
-    std::string get_password() {
-      return "test";
-    }
 
     // See https://wiki.mozilla.org/Security/Server_Side_TLS for more details about
     // the TLS modes. The code below demonstrates how to implement both the modern
@@ -278,7 +384,8 @@ namespace shape {
       MOZILLA_MODERN = 2
     };
 
-    context_ptr on_tls_init(tls_mode mode, connection_hdl hdl) {
+    context_ptr on_tls_init(tls_mode mode, connection_hdl hdl)
+    {
       namespace asio = websocketpp::lib::asio;
 
       std::cout << "on_tls_init called with hdl: " << hdl.lock().get() << std::endl;
@@ -304,14 +411,12 @@ namespace shape {
         //ctx->set_password_callback(bind(&get_password));
         ctx->use_certificate_chain_file("./tls/cert.pem");
         ctx->use_private_key_file("./tls/key.pem", asio::ssl::context::pem);
-        //ctx->use_certificate_chain_file("./tls/server.pem");
-        //ctx->use_private_key_file("./tls/server.pem", asio::ssl::context::pem);
 
         // Example method of generating this file:
         // `openssl dhparam -out dh.pem 2048`
         // Mozilla Intermediate suggests 1024 as the minimum size to use
         // Mozilla Modern suggests 2048 as the minimum size to use.
-        ctx->use_tmp_dh_file("./tls/dh.pem");
+        //ctx->use_tmp_dh_file("./tls/dh.pem");
 
         std::string ciphers;
 
@@ -356,24 +461,13 @@ namespace shape {
       if (m_runThd) {
         if (connId.empty()) { //broadcast if empty
           for (auto it : m_connectionsStrMap) {
-
-            websocketpp::lib::error_code ec;
-            m_server.send(it.first, msg, websocketpp::frame::opcode::text, ec); // send text message.
-            if (ec) {
-              TRC_WARNING("Cannot send message: " << PAR(m_port) << ec.message());
-            }
+            m_server->send(it.first, msg); // send text message.
           }
         }
         else {
           for (auto it : m_connectionsStrMap) {
             if (it.second == connId) {
-
-              websocketpp::lib::error_code ec;
-              m_server.send(it.first, msg, websocketpp::frame::opcode::text, ec); // send text message.
-              if (ec) {
-                auto conState = m_server.get_con_from_hdl(it.first)->get_state();
-                TRC_WARNING("Cannot send message: " << PAR(conState) << PAR(m_port) << ec.message());
-              }
+              m_server->send(it.first, msg); // send text message.
               break;
             }
           }
@@ -391,19 +485,14 @@ namespace shape {
 
       // listen on specified port
       try {
-        m_server.set_reuse_addr(true);
-        m_server.listen(m_port);
+        m_server->listen(m_port);
+
+        // Starting Websocket accept.
+        m_server->start_accept();
       }
       catch (websocketpp::exception const &e) {
         // Websocket exception on listen. Get char string via e.what().
-        CATCH_EXC_TRC_WAR(websocketpp::exception, e, "listen failed");
-      }
-
-      // Starting Websocket accept.
-      websocketpp::lib::error_code ec;
-      m_server.start_accept(ec);
-      if (ec) {
-        // Can log an error message with the contents of ec.message() here.
+        CATCH_EXC_TRC_WAR(websocketpp::exception, e, "listen or start_accept failed");
       }
 
       if (!m_runThd) {
@@ -422,13 +511,8 @@ namespace shape {
         TRC_INFORMATION("stop listen");
         // Stopping the Websocket listener and closing outstanding connections.
         websocketpp::lib::error_code ec;
-        if (m_server.is_listening()) {
-          m_server.stop_listening(ec);
-          if (ec) {
-            // Failed to stop listening. Log reason using ec.message().
-            TRC_INFORMATION("Failed stop_listening: " << ec.message());
-            //return;
-          }
+        if (m_server->is_listening()) {
+          m_server->stop_listening();
         }
 
         // copy all existing websocket connections.
@@ -442,12 +526,7 @@ namespace shape {
         TRC_INFORMATION("close connections");
         std::string data = "Terminating connection...";
         for (auto con : connectionsStrMap) {
-          websocketpp::lib::error_code ec;
-          TRC_INFORMATION("close connection: " << con.second);
-          m_server.close(con.first, websocketpp::close::status::normal, data, ec); // send text message.
-          if (ec) { // we got an error
-                    // Error closing websocket. Log reason using ec.message().
-          }
+          m_server->close(con.first, con.second, data); // send text message.
         }
 
         // clear all existing websocket connections mapping.
@@ -458,8 +537,6 @@ namespace shape {
 
         // Stop the endpoint.
         TRC_INFORMATION("stop server");
-        //m_server.stop();
-        //m_server.reset();
 
         if (m_thd.joinable()) {
           std::cout << "Joining WsServer thread ..." << std::endl;
@@ -529,50 +606,87 @@ namespace shape {
         "******************************"
       );
 
-      // WsServer url will be http://localhost:<port> default port: 1338
-      props->getMemberAsInt("WebsocketPort", m_port);
-      props->getMemberAsBool("AutoStart", m_autoStart);
-      props->getMemberAsBool("acceptOnlyLocalhost", m_acceptOnlyLocalhost);
-      TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart) << PAR(m_acceptOnlyLocalhost));
+      using namespace rapidjson;
 
-      // set up access channels to only log interesting things
-      m_server.set_access_channels(websocketpp::log::alevel::all);
-      m_server.set_access_channels(websocketpp::log::elevel::all);
+      const Document& doc = props->getAsJson();
 
-      // Set custom logger (ostream-based).
-      m_server.get_alog().set_ostream(&m_wsLogerOs);
-      m_server.get_elog().set_ostream(&m_wsLogerOs);
+      {
+        const Value* v = Pointer("/WebsocketPort").Get(doc);
+        if (v && v->IsInt()) {
+          m_port = v->GetInt();
+        }
+        else {
+          TRC_WARNING("WebsocketPort not specified => used default: " << PAR(m_port));
+        }
+      }
 
-      // Initialize Asio
-      m_server.init_asio();
+      {
+        const Value* v = Pointer("/AutoStart").Get(doc);
+        if (v && v->IsBool()) {
+          m_port = v->GetBool();
+        }
+        else {
+          TRC_WARNING("AutoStart not specified => used default: " << PAR(m_autoStart));
+        }
+      }
 
-      m_server.set_validate_handler([&](connection_hdl hdl)->bool {
-        return on_validate(hdl);
-      });
+      {
+        const Value* v = Pointer("/acceptOnlyLocalhost").Get(doc);
+        if (v && v->IsBool()) {
+          m_acceptOnlyLocalhost = v->GetBool();
+        }
+        else {
+          TRC_WARNING("acceptOnlyLocalhost not specified => used default: " << PAR(m_acceptOnlyLocalhost));
+        }
+      }
 
-      m_server.set_fail_handler([&](connection_hdl hdl) {
-        on_fail(hdl);
-      });
+      {
+        const Value* v = Pointer("/wss").Get(doc);
+        if (v && v->IsBool()) {
+          m_wss = v->GetBool();
+        }
+        else {
+          TRC_WARNING("wss not specified => used default: " << PAR(m_wss));
+        }
+      }
 
-      m_server.set_close_handler([&](connection_hdl hdl) {
-        on_close(hdl);
-      });
+      {
+        const Value* v = Pointer("/KeyStore").Get(doc);
+        if (v && v->IsBool()) {
+          m_cert = v->GetBool();
+        }
+        else {
+          TRC_WARNING("KeyStore not specified => used default: " << PAR(m_cert));
+        }
+      }
 
-      //m_server.set_http_handler([&](connection_hdl hdl, WsServer::message_ptr msg) {
-      //  on_message(hdl, msg);
-      //});
+      {
+        const Value* v = Pointer("/PrivateKey").Get(doc);
+        if (v && v->IsBool()) {
+          m_key = v->GetBool();
+        }
+        else {
+          TRC_WARNING("PrivateKey not specified => used default: " << PAR(m_key));
+        }
+      }
 
-//??????????????
-      m_server.set_http_handler([&](connection_hdl hdl) {
-        on_http(hdl);
-      });
+      TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart) << PAR(m_acceptOnlyLocalhost) << PAR(m_wss) << PAR(m_cert) << PAR(m_key));
 
-      m_server.set_tls_init_handler([&](connection_hdl hdl)->context_ptr {
-        //return on_tls_init(MOZILLA_INTERMEDIATE, hdl);
-        return on_tls_init(MOZILLA_MODERN, hdl);
-      });
+      if (! m_wss) {
+        std::unique_ptr<WsServerPlain> ptr = std::unique_ptr<WsServerPlain>(shape_new WsServerPlain);
+        initServer(ptr->getServer());
+        m_server = std::move(ptr);
+      }
+      else {
+        std::unique_ptr<WsServerTls> ptr = std::unique_ptr<WsServerTls>(shape_new WsServerTls);
+        initServer(ptr->getServer());
+        ptr->getServer().set_tls_init_handler([&](connection_hdl hdl)->context_ptr {
+          //return on_tls_init(MOZILLA_INTERMEDIATE, hdl);
+          return on_tls_init(MOZILLA_MODERN, hdl);
+        });
+        m_server = std::move(ptr);
+      }
 
-//??????????????
       if (m_autoStart) {
         start();
       }
@@ -603,7 +717,7 @@ namespace shape {
       while (m_runThd) {
         // Start the ASIO io_service run loop
         try {
-          m_server.run();
+          m_server->run();
         }
         catch (websocketpp::exception const & e) {
           std::cout << e.what() << std::endl;

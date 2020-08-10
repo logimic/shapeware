@@ -1,5 +1,11 @@
 project(WebsocketCppService)
 
+#workaround to cope with c1128 number of sections exceeded object file format limit
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /bigobj")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
+endif ()
+
 find_package(OPENSSL REQUIRED)
 
 set(COMPONENT shape::WebsocketCppService)
