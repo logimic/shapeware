@@ -148,6 +148,8 @@ namespace shape {
       T m_server;
     };
 
+    shape::ILaunchService* m_iLaunchService = nullptr;
+
     typedef WsServerTyped<websocketpp::server<websocketpp::config::asio>> WsServerPlain;
     typedef WsServerTyped<websocketpp::server<websocketpp::config::asio_tls>> WsServerTls;
 
@@ -386,10 +388,9 @@ namespace shape {
 
     context_ptr on_tls_init(tls_mode mode, connection_hdl hdl)
     {
-      namespace asio = websocketpp::lib::asio;
+      TRC_FUNCTION_ENTER(NAME_PAR(mode, (mode == MOZILLA_MODERN ? "Mozilla Modern" : "Mozilla Intermediate")) << NAME_PAR(hdl, hdl.lock().get()));
 
-      std::cout << "on_tls_init called with hdl: " << hdl.lock().get() << std::endl;
-      std::cout << "using TLS mode: " << (mode == MOZILLA_MODERN ? "Mozilla Modern" : "Mozilla Intermediate") << std::endl;
+      namespace asio = websocketpp::lib::asio;
 
       context_ptr ctx = websocketpp::lib::make_shared<asio::ssl::context>(asio::ssl::context::sslv23);
 
@@ -409,8 +410,8 @@ namespace shape {
             asio::ssl::context::single_dh_use);
         }
         //ctx->set_password_callback(bind(&get_password));
-        ctx->use_certificate_chain_file("./tls/cert.pem");
-        ctx->use_private_key_file("./tls/key.pem", asio::ssl::context::pem);
+        ctx->use_certificate_chain_file(m_cert);
+        ctx->use_private_key_file(m_key, asio::ssl::context::pem);
 
         // Example method of generating this file:
         // `openssl dhparam -out dh.pem 2048`
@@ -434,6 +435,8 @@ namespace shape {
       catch (std::exception& e) {
         std::cout << "Exception: " << e.what() << std::endl;
       }
+
+      TRC_FUNCTION_LEAVE("");
       return ctx;
     }
     ///////////////////////////////
@@ -652,8 +655,8 @@ namespace shape {
 
       {
         const Value* v = Pointer("/KeyStore").Get(doc);
-        if (v && v->IsBool()) {
-          m_cert = v->GetBool();
+        if (v && v->IsString()) {
+          m_cert = v->GetString();
         }
         else {
           TRC_WARNING("KeyStore not specified => used default: " << PAR(m_cert));
@@ -662,8 +665,8 @@ namespace shape {
 
       {
         const Value* v = Pointer("/PrivateKey").Get(doc);
-        if (v && v->IsBool()) {
-          m_key = v->GetBool();
+        if (v && v->IsString()) {
+          m_key = v->GetString();
         }
         else {
           TRC_WARNING("PrivateKey not specified => used default: " << PAR(m_key));
@@ -671,6 +674,10 @@ namespace shape {
       }
 
       TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart) << PAR(m_acceptOnlyLocalhost) << PAR(m_wss) << PAR(m_cert) << PAR(m_key));
+
+      std::string dataDir = m_iLaunchService->getDataDir();
+      m_cert = m_cert.empty() ? "" : dataDir + "/cert/" + m_cert;
+      m_key = m_key.empty() ? "" : dataDir + "/cert/" + m_key;
 
       if (! m_wss) {
         std::unique_ptr<WsServerPlain> ptr = std::unique_ptr<WsServerPlain>(shape_new WsServerPlain);
@@ -706,6 +713,18 @@ namespace shape {
       stop();
 
       TRC_FUNCTION_LEAVE("")
+    }
+
+    void attachInterface(shape::ILaunchService* iface)
+    {
+      m_iLaunchService = iface;
+    }
+
+    void detachInterface(shape::ILaunchService* iface)
+    {
+      if (m_iLaunchService == iface) {
+        m_iLaunchService = nullptr;
+      }
     }
 
   private:
@@ -821,6 +840,16 @@ namespace shape {
   void WebsocketCppService::modify(const shape::Properties *props)
   {
     (void)props; //silence -Wunused-parameter
+  }
+
+  void WebsocketCppService::attachInterface(shape::ILaunchService* iface)
+  {
+    m_imp->attachInterface(iface);
+  }
+
+  void WebsocketCppService::detachInterface(shape::ILaunchService* iface)
+  {
+    m_imp->detachInterface(iface);
   }
 
   void WebsocketCppService::attachInterface(shape::ITraceService* iface)
