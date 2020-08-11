@@ -16,12 +16,14 @@ Install via vcpkg:
 C:\devel\vcpkg>vcpkg install mqtt-paho:x64-windows
 C:\devel\vcpkg>vcpkg install curl:x64-windows
 C:\devel\vcpkg>vcpkg install cppzmq:x64-windows
+C:\devel\vcpkg>vcpkg install openssl:x64-windows
 ```
 ### Linux
 
 Install via apt-get:
 
 ```
+$ sudo apt-get install libssl-dev
 $ sudo apt-get install libcurl4-openssl-dev
 $ sudo apt-get install libzmqpp-dev
 $ sudo apt-get install libpaho-mqtt-dev
