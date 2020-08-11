@@ -220,6 +220,20 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
+    void destroy(const std::string& clientId)
+    {
+      TRC_FUNCTION_ENTER(PAR(clientId));
+
+      disconnect();
+
+      MQTTAsync_setCallbacks(m_client, nullptr, nullptr, nullptr, nullptr);
+      MQTTAsync_destroy(&m_client);
+
+      TRC_INFORMATION(PAR(clientId) << "destroyed");
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
     //------------------------
     void connect()
     {
@@ -1101,6 +1115,11 @@ namespace shape {
   void MqttService::create(const std::string& clientId, const ConnectionPars& cp)
   {
     m_impl->create(clientId, cp);
+  }
+
+  void MqttService::destroy(const std::string& clientId)
+  {
+    m_impl->destroy(clientId);
   }
 
   void MqttService::connect()
