@@ -6,7 +6,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 endif ()
 
-find_package(OPENSSL REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 set(COMPONENT shape::WebsocketCppService)
 DeclareShapeComponent(${COMPONENT})
