@@ -25,9 +25,12 @@
 #define ASIO_STANDALONE
 #define _WEBSOCKETPP_CPP11_INTERNAL_
 
-#include <websocketpp/config/asio_no_tls.hpp>
-#include <websocketpp/config/asio.hpp>
-#include <websocketpp/server.hpp>
+#include "WsServerPlain.h"
+#include "WsServerTls.h"
+
+//#include <websocketpp/config/asio_no_tls.hpp>
+//#include <websocketpp/config/asio.hpp>
+//#include <websocketpp/server.hpp>
 
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
@@ -47,111 +50,111 @@ TRC_INIT_MODULE(shape::WebsocketCppService);
 namespace shape {
 
   typedef websocketpp::connection_hdl connection_hdl;
-  typedef websocketpp::config::core::message_type::ptr message_ptr;
+  //typedef websocketpp::config::core::message_type::ptr message_ptr;
   
-  typedef websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context> context_ptr;
+  //typedef websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context> context_ptr;
 
   class WebsocketCppService::Imp
   {
   private:
-    class WsServer
-    {
-    public:
-      WsServer()
-      {}
+    //class WsServerBase
+    //{
+    //public:
+    //  WsServerBase()
+    //  {}
 
-      virtual ~WsServer() {}
-      virtual void run() = 0;
-      virtual bool is_listening() = 0;
-      virtual void listen(int m_port) = 0;
-      virtual void start_accept() = 0;
-      virtual void send(connection_hdl chdl, const std::string & msg) = 0;
-      virtual void close(connection_hdl chndl, const std::string & descr, const std::string & data) = 0;
-      virtual void stop_listening() = 0;
-      virtual void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) = 0;
-    };
+    //  virtual ~WsServerBase() {}
+    //  virtual void run() = 0;
+    //  virtual bool is_listening() = 0;
+    //  virtual void listen(int m_port) = 0;
+    //  virtual void start_accept() = 0;
+    //  virtual void send(connection_hdl chdl, const std::string & msg) = 0;
+    //  virtual void close(connection_hdl chndl, const std::string & descr, const std::string & data) = 0;
+    //  virtual void stop_listening() = 0;
+    //  virtual void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) = 0;
+    //};
 
-    template<typename T>
-    class WsServerTyped : public WsServer
-    {
-    public:
-      ~WsServerTyped() {}
+    //template<typename T>
+    //class WsServerTyped : public WsServerBase
+    //{
+    //public:
+    //  ~WsServerTyped() {}
 
-      void run() override
-      {
-        m_server.run();
-      }
+    //  void run() override
+    //  {
+    //    m_server.run();
+    //  }
 
-      bool is_listening() override
-      {
-        return m_server.is_listening();
-      }
+    //  bool is_listening() override
+    //  {
+    //    return m_server.is_listening();
+    //  }
 
-      void listen(int port) override
-      {
-        m_server.set_reuse_addr(true);
-        m_server.listen(port);
-      }
+    //  void listen(int port) override
+    //  {
+    //    m_server.set_reuse_addr(true);
+    //    m_server.listen(port);
+    //  }
 
-      void start_accept() override
-      {
-        m_server.start_accept();
-      }
+    //  void start_accept() override
+    //  {
+    //    m_server.start_accept();
+    //  }
 
-      void send(connection_hdl chdl, const std::string & msg) override
-      {
-        websocketpp::lib::error_code ec;
-        m_server.send(chdl, msg, websocketpp::frame::opcode::text, ec); // send text message.
-        if (ec) {
-          auto conState = m_server.get_con_from_hdl(chdl)->get_state();
-          TRC_WARNING("Cannot send message: " << PAR(conState) << ec.message());
-        }
-      }
+    //  void send(connection_hdl chdl, const std::string & msg) override
+    //  {
+    //    websocketpp::lib::error_code ec;
+    //    m_server.send(chdl, msg, websocketpp::frame::opcode::text, ec); // send text message.
+    //    if (ec) {
+    //      auto conState = m_server.get_con_from_hdl(chdl)->get_state();
+    //      TRC_WARNING("Cannot send message: " << PAR(conState) << ec.message());
+    //    }
+    //  }
 
-      void close(connection_hdl chndl, const std::string & descr, const std::string & data) override
-      {
-        websocketpp::lib::error_code ec;
-        m_server.close(chndl, websocketpp::close::status::normal, data, ec); // send text message.
-        if (ec) { // we got an error
-           // Error closing websocket. Log reason using ec.message().
-          TRC_WARNING("close connection: " << PAR(descr) << ec.message());
-        }
-      }
+    //  void close(connection_hdl chndl, const std::string & descr, const std::string & data) override
+    //  {
+    //    websocketpp::lib::error_code ec;
+    //    m_server.close(chndl, websocketpp::close::status::normal, data, ec); // send text message.
+    //    if (ec) { // we got an error
+    //       // Error closing websocket. Log reason using ec.message().
+    //      TRC_WARNING("close connection: " << PAR(descr) << ec.message());
+    //    }
+    //  }
 
-      void stop_listening() override
-      {
-        websocketpp::lib::error_code ec;
-        m_server.stop_listening(ec);
-        if (ec) {
-          // Failed to stop listening. Log reason using ec.message().
-          TRC_INFORMATION("Failed stop_listening: " << ec.message());
-        }
-      }
+    //  void stop_listening() override
+    //  {
+    //    websocketpp::lib::error_code ec;
+    //    m_server.stop_listening(ec);
+    //    if (ec) {
+    //      // Failed to stop listening. Log reason using ec.message().
+    //      TRC_INFORMATION("Failed stop_listening: " << ec.message());
+    //    }
+    //  }
 
-      void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) override
-      {
-        auto con = m_server.get_con_from_hdl(chdl);
+    //  void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) override
+    //  {
+    //    auto con = m_server.get_con_from_hdl(chdl);
 
-        std::ostringstream os;
-        os << con->get_handle().lock().get();
-        connId = os.str();
+    //    std::ostringstream os;
+    //    os << con->get_handle().lock().get();
+    //    connId = os.str();
 
-        uri = con->get_uri();
-      }
+    //    uri = con->get_uri();
+    //  }
 
-      T & getServer()
-      {
-        return m_server;
-      }
+    //  T & getServer()
+    //  {
+    //    return m_server;
+    //  }
 
-    private:
-      T m_server;
-    };
+    //private:
+    //  T m_server;
+    //};
 
     shape::ILaunchService* m_iLaunchService = nullptr;
 
-    typedef WsServerTyped<websocketpp::server<websocketpp::config::asio>> WsServerPlain;
-    typedef WsServerTyped<websocketpp::server<websocketpp::config::asio_tls>> WsServerTls;
+    //typedef WsServerTyped<websocketpp::server<websocketpp::config::asio>> WsServerPlain;
+    //typedef WsServerTyped<websocketpp::server<websocketpp::config::asio_tls>> WsServerTls;
 
     std::unique_ptr<WsServer> m_server;
 
@@ -200,46 +203,46 @@ namespace shape {
       return false;
     }
 
-    template <typename T>
-    void initServer(T & server)
-    {
-      TRC_FUNCTION_ENTER("");
+    //template <typename T>
+    //void initServer(T & server)
+    //{
+    //  TRC_FUNCTION_ENTER("");
 
-      // set up access channels to only log interesting things
-      server.set_access_channels(websocketpp::log::alevel::all);
-      server.set_access_channels(websocketpp::log::elevel::all);
+    //  // set up access channels to only log interesting things
+    //  server.set_access_channels(websocketpp::log::alevel::all);
+    //  server.set_access_channels(websocketpp::log::elevel::all);
 
-      // Set custom logger (ostream-based).
-      server.get_alog().set_ostream(&m_wsLogerOs);
-      server.get_elog().set_ostream(&m_wsLogerOs);
+    //  // Set custom logger (ostream-based).
+    //  server.get_alog().set_ostream(&m_wsLogerOs);
+    //  server.get_elog().set_ostream(&m_wsLogerOs);
 
-      // Initialize Asio
-      server.init_asio();
+    //  // Initialize Asio
+    //  server.init_asio();
 
-      server.set_validate_handler([&](connection_hdl hdl)->bool {
-        return on_validate<T>(hdl);
-      });
+    //  server.set_validate_handler([&](connection_hdl hdl)->bool {
+    //    return on_validate<T>(hdl);
+    //  });
 
-      server.set_fail_handler([&](connection_hdl hdl) {
-        TRC_FUNCTION_ENTER("on_fail(): ");
-        auto con = server.get_con_from_hdl(hdl);
-        websocketpp::lib::error_code ec = con->get_ec();
-        TRC_WARNING("on_fail(): Error: " << NAME_PAR(hdl, hdl.lock().get()) << " " << ec.message());
-        TRC_FUNCTION_LEAVE("");
-      });
+    //  server.set_fail_handler([&](connection_hdl hdl) {
+    //    TRC_FUNCTION_ENTER("on_fail(): ");
+    //    auto con = server.get_con_from_hdl(hdl);
+    //    websocketpp::lib::error_code ec = con->get_ec();
+    //    TRC_WARNING("on_fail(): Error: " << NAME_PAR(hdl, hdl.lock().get()) << " " << ec.message());
+    //    TRC_FUNCTION_LEAVE("");
+    //  });
 
-      server.set_close_handler([&](connection_hdl hdl) {
-        on_close(hdl);
-      });
+    //  server.set_close_handler([&](connection_hdl hdl) {
+    //    on_close(hdl);
+    //  });
 
-      server.set_message_handler([&](connection_hdl hdl, message_ptr msg) {
-        on_message(hdl, msg);
-      });
+    //  server.set_message_handler([&](connection_hdl hdl, message_ptr msg) {
+    //    on_message(hdl, msg);
+    //  });
 
-      TRC_FUNCTION_LEAVE("")
-    }
+    //  TRC_FUNCTION_LEAVE("")
+    //}
 
-    void on_message(connection_hdl hdl, message_ptr msg)
+    void on_message1(connection_hdl hdl, std::string msg)
     {
       TRC_FUNCTION_ENTER("");
 
@@ -255,13 +258,13 @@ namespace shape {
         found = false;
 
         if (m_messageStrHandlerFunc) {
-          m_messageStrHandlerFunc(msg->get_payload(), connId);
+          m_messageStrHandlerFunc(msg, connId);
           found = true;
         }
 
         if (m_messageHandlerFunc) {
-          uint8_t* buf = (uint8_t*)msg->get_payload().data();
-          std::vector<uint8_t> vmsg(buf, buf + msg->get_payload().size());
+          uint8_t* buf = (uint8_t*)msg.data();
+          std::vector<uint8_t> vmsg(buf, buf + msg.size());
           m_messageHandlerFunc(vmsg, connId);
           found = true;
         }
@@ -277,19 +280,110 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
-    template <typename T>
-    bool on_validate(connection_hdl hdl)
+    //void on_message(connection_hdl hdl, message_ptr msg)
+    //{
+    //  TRC_FUNCTION_ENTER("");
+
+    //  std::string connId;
+    //  bool found = false;
+    //  {
+    //    std::unique_lock<std::mutex> lock(m_mux);
+    //    found = getConnId(hdl, connId);
+    //  }
+
+    //  if (found) {
+    //    TRC_DEBUG("Found: " << PAR(connId));;
+    //    found = false;
+
+    //    if (m_messageStrHandlerFunc) {
+    //      m_messageStrHandlerFunc(msg->get_payload(), connId);
+    //      found = true;
+    //    }
+
+    //    if (m_messageHandlerFunc) {
+    //      uint8_t* buf = (uint8_t*)msg->get_payload().data();
+    //      std::vector<uint8_t> vmsg(buf, buf + msg->get_payload().size());
+    //      m_messageHandlerFunc(vmsg, connId);
+    //      found = true;
+    //    }
+
+    //    if (!found) {
+    //      TRC_WARNING("Handler is not registered");
+    //    }
+
+    //  }
+    //  else {
+    //    TRC_WARNING("Cannot find matching connection");
+    //  }
+    //  TRC_FUNCTION_LEAVE("");
+    //}
+
+    //template <typename T>
+    //bool on_validate(connection_hdl hdl)
+    //{
+    //  //TODO on_connection can be use instead, however we're ready for authentication by a token
+    //  TRC_FUNCTION_ENTER("");
+    //  bool valid = true;
+
+    //  std::string connId;
+    //  websocketpp::uri_ptr uri;
+    //  m_server->getConnParams(hdl, connId, uri);
+
+    //  std::string query = uri->get_query(); // returns empty string if no query string set.
+    //  std::string host = uri->get_host();
+
+    //  if (m_acceptOnlyLocalhost) {
+    //    if (host == "localhost" || host == "127.0.0.1" || host == "[::1]") {
+    //      valid = true;
+    //    }
+    //    else {
+    //      valid = false;
+    //      TRC_INFORMATION("Connection refused: " << PAR(connId) << PAR(host));;
+    //    }
+    //  }
+
+    //  if (valid) {
+    //    TRC_INFORMATION("Connected: " << PAR(connId) << PAR(host));;
+
+    //    if (!query.empty()) {
+    //      // Split the query parameter string here, if desired.
+    //      // We assume we extracted a string called 'id' here.
+    //    }
+    //    else {
+    //      // Reject if no query parameter provided, for example.
+    //      //return false;
+    //    }
+
+    //    {
+    //      std::unique_lock<std::mutex> lock(m_mux);
+    //      m_connectionsStrMap.insert(std::make_pair(hdl, connId));
+    //    }
+
+    //    if (m_openHandlerFunc) {
+    //      m_openHandlerFunc(connId);
+    //    }
+    //    else {
+    //      TRC_WARNING("Message handler is not registered");
+    //    }
+    //  }
+    //  TRC_FUNCTION_LEAVE(PAR(valid));
+    //  return valid;
+    //}
+
+    void on_fail1(connection_hdl chdl)
+    {
+      TRC_FUNCTION_ENTER("on_fail(): ");
+      //auto con = m_server.get_con_from_hdl(hdl);
+      //websocketpp::lib::error_code ec = con->get_ec();
+      //TRC_WARNING("on_fail(): Error: " << NAME_PAR(hdl, hdl.lock().get()) << " " << ec.message());
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    bool on_validate1(connection_hdl chdl, const std::string & connId, const std::string & host, const std::string & query)
     {
       //TODO on_connection can be use instead, however we're ready for authentication by a token
       TRC_FUNCTION_ENTER("");
       bool valid = true;
-
-      std::string connId;
-      websocketpp::uri_ptr uri;
-      m_server->getConnParams(hdl, connId, uri);
-
-      std::string query = uri->get_query(); // returns empty string if no query string set.
-      std::string host = uri->get_host();
 
       if (m_acceptOnlyLocalhost) {
         if (host == "localhost" || host == "127.0.0.1" || host == "[::1]") {
@@ -297,13 +391,10 @@ namespace shape {
         }
         else {
           valid = false;
-          TRC_INFORMATION("Connection refused: " << PAR(connId) << PAR(host));;
         }
       }
 
       if (valid) {
-        TRC_INFORMATION("Connected: " << PAR(connId) << PAR(host));;
-
         if (!query.empty()) {
           // Split the query parameter string here, if desired.
           // We assume we extracted a string called 'id' here.
@@ -315,7 +406,7 @@ namespace shape {
 
         {
           std::unique_lock<std::mutex> lock(m_mux);
-          m_connectionsStrMap.insert(std::make_pair(hdl, connId));
+          m_connectionsStrMap.insert(std::make_pair(chdl, connId));
         }
 
         if (m_openHandlerFunc) {
@@ -386,6 +477,7 @@ namespace shape {
       MOZILLA_MODERN = 2
     };
 
+#if 0
     context_ptr on_tls_init(tls_mode mode, connection_hdl hdl)
     {
       TRC_FUNCTION_ENTER(NAME_PAR(mode, (mode == MOZILLA_MODERN ? "Mozilla Modern" : "Mozilla Intermediate")) << NAME_PAR(hdl, hdl.lock().get()));
@@ -439,6 +531,7 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
       return ctx;
     }
+#endif
     ///////////////////////////////
 
   public:
@@ -542,9 +635,9 @@ namespace shape {
         TRC_INFORMATION("stop server");
 
         if (m_thd.joinable()) {
-          std::cout << "Joining WsServer thread ..." << std::endl;
+          //std::cout << "Joining WsServerBase thread ..." << std::endl;
           m_thd.join();
-          std::cout << "WsServer thread joined" << std::endl;
+          //std::cout << "WsServerBase thread joined" << std::endl;
         }
       }
       TRC_FUNCTION_LEAVE("");
@@ -681,17 +774,33 @@ namespace shape {
 
       if (! m_wss) {
         std::unique_ptr<WsServerPlain> ptr = std::unique_ptr<WsServerPlain>(shape_new WsServerPlain);
-        initServer(ptr->getServer());
+        //initServer(ptr->getServer());
+        ptr->setOnFunctions(
+          [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate1(hdl, connId, host, query); }
+          , [&](connection_hdl hdl) { on_fail1(hdl); }
+          , [&](connection_hdl hdl) { on_close(hdl); }
+          , [&](connection_hdl hdl, std::string msg) { on_message1(hdl, msg); }
+          );
         m_server = std::move(ptr);
       }
       else {
         std::unique_ptr<WsServerTls> ptr = std::unique_ptr<WsServerTls>(shape_new WsServerTls);
-        initServer(ptr->getServer());
-        ptr->getServer().set_tls_init_handler([&](connection_hdl hdl)->context_ptr {
-          //return on_tls_init(MOZILLA_INTERMEDIATE, hdl);
-          return on_tls_init(MOZILLA_MODERN, hdl);
-        });
+        //initServer(ptr->getServer());
+        ptr->setOnFunctions(
+          [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate1(hdl, connId, host, query); }
+        , [&](connection_hdl hdl) { on_fail1(hdl); }
+        , [&](connection_hdl hdl) { on_close(hdl); }
+        , [&](connection_hdl hdl, std::string msg) { on_message1(hdl, msg); }
+        );
         m_server = std::move(ptr);
+
+        //std::unique_ptr<WsServerTls> ptr = std::unique_ptr<WsServerTls>(shape_new WsServerTls);
+        //initServer(ptr->getServer());
+        //ptr->getServer().set_tls_init_handler([&](connection_hdl hdl)->context_ptr {
+        //  //return on_tls_init(MOZILLA_INTERMEDIATE, hdl);
+        //  return on_tls_init(MOZILLA_MODERN, hdl);
+        //});
+        //m_server = std::move(ptr);
       }
 
       if (m_autoStart) {
@@ -739,7 +848,7 @@ namespace shape {
           m_server->run();
         }
         catch (websocketpp::exception const & e) {
-          std::cout << e.what() << std::endl;
+          CATCH_EXC_TRC_WAR(websocketpp::exception, e, "Unexpected Asio error: ")
         }
       }
     }
