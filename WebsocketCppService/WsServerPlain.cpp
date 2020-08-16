@@ -28,11 +28,9 @@ namespace shape {
 
   class WsServerPlain::Imp : public WsServerTyped<websocketpp::server<websocketpp::config::asio>>
   {
-  public:
   };
 
   
-  ////////////////////
   WsServerPlain::WsServerPlain()
   {
     m_imp = shape_new WsServerPlain::Imp();

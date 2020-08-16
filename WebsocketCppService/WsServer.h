@@ -25,7 +25,6 @@
 #include "Trace.h"
 
 typedef websocketpp::connection_hdl connection_hdl;
-//typedef websocketpp::config::core::message_type::ptr message_ptr;
 
 namespace shape {
   class WsServer
@@ -44,8 +43,8 @@ namespace shape {
     virtual void stop_listening() = 0;
     virtual void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) = 0;
     
-    typedef std::function<bool(connection_hdl hdl, const std::string & connId, const std::string &, const std::string &)> OnValidate;
-    typedef std::function<void(connection_hdl hdl)> OnFail;
+    typedef std::function<bool(connection_hdl chdl, const std::string & connId, const std::string & host, const std::string & query)> OnValidate;
+    typedef std::function<void(connection_hdl hdl, std::string errstr)> OnFail;
     typedef std::function<void(connection_hdl hdl)> OnClose;
     typedef std::function<void(connection_hdl hdl, std::string msg)> OnMessage;
 
@@ -84,30 +83,9 @@ namespace shape {
         websocketpp::uri_ptr uri;
         
         getConnParams(hdl, connId, uri);
-        //void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) override
-        //{
-          //auto con = m_server.get_con_from_hdl(hdl);
-
-          //std::ostringstream os;
-          //os << con->get_handle().lock().get();
-          //connId = os.str();
-
-          //uri = con->get_uri();
-        //}
-
 
         std::string query = uri->get_query(); // returns empty string if no query string set.
         std::string host = uri->get_host();
-
-        //if (m_acceptOnlyLocalhost) {
-        //  if (host == "localhost" || host == "127.0.0.1" || host == "[::1]") {
-        //    valid = true;
-        //  }
-        //  else {
-        //    valid = false;
-        //    TRC_INFORMATION("Connection refused: " << PAR(connId) << PAR(host));;
-        //  }
-        //}
 
         if (m_onValidate) {
           valid = m_onValidate(hdl, connId, host, query);
@@ -116,37 +94,18 @@ namespace shape {
           TRC_WARNING("onValidate not set");
         }
 
-        if (valid) {
-          TRC_INFORMATION("Connected: " << PAR(connId) << PAR(host));;
-
-          if (!query.empty()) {
-            // Split the query parameter string here, if desired.
-            // We assume we extracted a string called 'id' here.
-          }
-          else {
-            // Reject if no query parameter provided, for example.
-            //return false;
-          }
-
-          //{
-          //  std::unique_lock<std::mutex> lock(m_mux);
-          //  m_connectionsStrMap.insert(std::make_pair(hdl, connId));
-          //}
-
-          //if (m_openHandlerFunc) {
-          //  m_openHandlerFunc(connId);
-          //}
-          //else {
-          //  TRC_WARNING("Message handler is not registered");
-          //}
-        }
         TRC_FUNCTION_LEAVE(PAR(valid));
         return valid;
       });
 
       m_server.set_fail_handler([&](connection_hdl hdl) {
+
+        auto con = m_server.get_con_from_hdl(hdl);
+        websocketpp::lib::error_code ec = con->get_ec();
+        std::string estr = ec.message();
+
         if (m_onFail) {
-          m_onFail(hdl);
+          m_onFail(hdl, estr);
         }
         else {
           TRC_WARNING("m_onFail not set");
@@ -154,7 +113,6 @@ namespace shape {
       });
 
       m_server.set_close_handler([&](connection_hdl hdl) {
-        //on_close(hdl);
         if (m_onClose) {
           m_onClose(hdl);
         }
@@ -176,30 +134,6 @@ namespace shape {
         }
       });
     }
-
-    //void setOnFunctions(OnValidate onValidate, OnFail onFail, OnClose onClose, OnMessage onMessage)
-    //{
-    //  m_server.set_validate_handler([&](connection_hdl hdl)->bool {
-    //    return on_validate<T>(hdl);
-    //  });
-
-    //  server.set_fail_handler([&](connection_hdl hdl) {
-    //    TRC_FUNCTION_ENTER("on_fail(): ");
-    //    auto con = server.get_con_from_hdl(hdl);
-    //    websocketpp::lib::error_code ec = con->get_ec();
-    //    TRC_WARNING("on_fail(): Error: " << NAME_PAR(hdl, hdl.lock().get()) << " " << ec.message());
-    //    TRC_FUNCTION_LEAVE("");
-    //  });
-
-    //  server.set_close_handler([&](connection_hdl hdl) {
-    //    on_close(hdl);
-    //  });
-
-    //  server.set_message_handler([&](connection_hdl hdl, message_ptr msg) {
-    //    on_message(hdl, msg);
-    //  });
-
-    //}
 
     void run()
     {

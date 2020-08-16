@@ -28,10 +28,6 @@
 #include "WsServerPlain.h"
 #include "WsServerTls.h"
 
-//#include <websocketpp/config/asio_no_tls.hpp>
-//#include <websocketpp/config/asio.hpp>
-//#include <websocketpp/server.hpp>
-
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
 #include "rapidjson/pointer.h"
@@ -50,111 +46,11 @@ TRC_INIT_MODULE(shape::WebsocketCppService);
 namespace shape {
 
   typedef websocketpp::connection_hdl connection_hdl;
-  //typedef websocketpp::config::core::message_type::ptr message_ptr;
-  
-  //typedef websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context> context_ptr;
 
   class WebsocketCppService::Imp
   {
   private:
-    //class WsServerBase
-    //{
-    //public:
-    //  WsServerBase()
-    //  {}
-
-    //  virtual ~WsServerBase() {}
-    //  virtual void run() = 0;
-    //  virtual bool is_listening() = 0;
-    //  virtual void listen(int m_port) = 0;
-    //  virtual void start_accept() = 0;
-    //  virtual void send(connection_hdl chdl, const std::string & msg) = 0;
-    //  virtual void close(connection_hdl chndl, const std::string & descr, const std::string & data) = 0;
-    //  virtual void stop_listening() = 0;
-    //  virtual void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) = 0;
-    //};
-
-    //template<typename T>
-    //class WsServerTyped : public WsServerBase
-    //{
-    //public:
-    //  ~WsServerTyped() {}
-
-    //  void run() override
-    //  {
-    //    m_server.run();
-    //  }
-
-    //  bool is_listening() override
-    //  {
-    //    return m_server.is_listening();
-    //  }
-
-    //  void listen(int port) override
-    //  {
-    //    m_server.set_reuse_addr(true);
-    //    m_server.listen(port);
-    //  }
-
-    //  void start_accept() override
-    //  {
-    //    m_server.start_accept();
-    //  }
-
-    //  void send(connection_hdl chdl, const std::string & msg) override
-    //  {
-    //    websocketpp::lib::error_code ec;
-    //    m_server.send(chdl, msg, websocketpp::frame::opcode::text, ec); // send text message.
-    //    if (ec) {
-    //      auto conState = m_server.get_con_from_hdl(chdl)->get_state();
-    //      TRC_WARNING("Cannot send message: " << PAR(conState) << ec.message());
-    //    }
-    //  }
-
-    //  void close(connection_hdl chndl, const std::string & descr, const std::string & data) override
-    //  {
-    //    websocketpp::lib::error_code ec;
-    //    m_server.close(chndl, websocketpp::close::status::normal, data, ec); // send text message.
-    //    if (ec) { // we got an error
-    //       // Error closing websocket. Log reason using ec.message().
-    //      TRC_WARNING("close connection: " << PAR(descr) << ec.message());
-    //    }
-    //  }
-
-    //  void stop_listening() override
-    //  {
-    //    websocketpp::lib::error_code ec;
-    //    m_server.stop_listening(ec);
-    //    if (ec) {
-    //      // Failed to stop listening. Log reason using ec.message().
-    //      TRC_INFORMATION("Failed stop_listening: " << ec.message());
-    //    }
-    //  }
-
-    //  void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) override
-    //  {
-    //    auto con = m_server.get_con_from_hdl(chdl);
-
-    //    std::ostringstream os;
-    //    os << con->get_handle().lock().get();
-    //    connId = os.str();
-
-    //    uri = con->get_uri();
-    //  }
-
-    //  T & getServer()
-    //  {
-    //    return m_server;
-    //  }
-
-    //private:
-    //  T m_server;
-    //};
-
     shape::ILaunchService* m_iLaunchService = nullptr;
-
-    //typedef WsServerTyped<websocketpp::server<websocketpp::config::asio>> WsServerPlain;
-    //typedef WsServerTyped<websocketpp::server<websocketpp::config::asio_tls>> WsServerTls;
 
     std::unique_ptr<WsServer> m_server;
 
@@ -203,46 +99,7 @@ namespace shape {
       return false;
     }
 
-    //template <typename T>
-    //void initServer(T & server)
-    //{
-    //  TRC_FUNCTION_ENTER("");
-
-    //  // set up access channels to only log interesting things
-    //  server.set_access_channels(websocketpp::log::alevel::all);
-    //  server.set_access_channels(websocketpp::log::elevel::all);
-
-    //  // Set custom logger (ostream-based).
-    //  server.get_alog().set_ostream(&m_wsLogerOs);
-    //  server.get_elog().set_ostream(&m_wsLogerOs);
-
-    //  // Initialize Asio
-    //  server.init_asio();
-
-    //  server.set_validate_handler([&](connection_hdl hdl)->bool {
-    //    return on_validate<T>(hdl);
-    //  });
-
-    //  server.set_fail_handler([&](connection_hdl hdl) {
-    //    TRC_FUNCTION_ENTER("on_fail(): ");
-    //    auto con = server.get_con_from_hdl(hdl);
-    //    websocketpp::lib::error_code ec = con->get_ec();
-    //    TRC_WARNING("on_fail(): Error: " << NAME_PAR(hdl, hdl.lock().get()) << " " << ec.message());
-    //    TRC_FUNCTION_LEAVE("");
-    //  });
-
-    //  server.set_close_handler([&](connection_hdl hdl) {
-    //    on_close(hdl);
-    //  });
-
-    //  server.set_message_handler([&](connection_hdl hdl, message_ptr msg) {
-    //    on_message(hdl, msg);
-    //  });
-
-    //  TRC_FUNCTION_LEAVE("")
-    //}
-
-    void on_message1(connection_hdl hdl, std::string msg)
+    void on_message(connection_hdl hdl, std::string msg)
     {
       TRC_FUNCTION_ENTER("");
 
@@ -280,106 +137,14 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
-    //void on_message(connection_hdl hdl, message_ptr msg)
-    //{
-    //  TRC_FUNCTION_ENTER("");
-
-    //  std::string connId;
-    //  bool found = false;
-    //  {
-    //    std::unique_lock<std::mutex> lock(m_mux);
-    //    found = getConnId(hdl, connId);
-    //  }
-
-    //  if (found) {
-    //    TRC_DEBUG("Found: " << PAR(connId));;
-    //    found = false;
-
-    //    if (m_messageStrHandlerFunc) {
-    //      m_messageStrHandlerFunc(msg->get_payload(), connId);
-    //      found = true;
-    //    }
-
-    //    if (m_messageHandlerFunc) {
-    //      uint8_t* buf = (uint8_t*)msg->get_payload().data();
-    //      std::vector<uint8_t> vmsg(buf, buf + msg->get_payload().size());
-    //      m_messageHandlerFunc(vmsg, connId);
-    //      found = true;
-    //    }
-
-    //    if (!found) {
-    //      TRC_WARNING("Handler is not registered");
-    //    }
-
-    //  }
-    //  else {
-    //    TRC_WARNING("Cannot find matching connection");
-    //  }
-    //  TRC_FUNCTION_LEAVE("");
-    //}
-
-    //template <typename T>
-    //bool on_validate(connection_hdl hdl)
-    //{
-    //  //TODO on_connection can be use instead, however we're ready for authentication by a token
-    //  TRC_FUNCTION_ENTER("");
-    //  bool valid = true;
-
-    //  std::string connId;
-    //  websocketpp::uri_ptr uri;
-    //  m_server->getConnParams(hdl, connId, uri);
-
-    //  std::string query = uri->get_query(); // returns empty string if no query string set.
-    //  std::string host = uri->get_host();
-
-    //  if (m_acceptOnlyLocalhost) {
-    //    if (host == "localhost" || host == "127.0.0.1" || host == "[::1]") {
-    //      valid = true;
-    //    }
-    //    else {
-    //      valid = false;
-    //      TRC_INFORMATION("Connection refused: " << PAR(connId) << PAR(host));;
-    //    }
-    //  }
-
-    //  if (valid) {
-    //    TRC_INFORMATION("Connected: " << PAR(connId) << PAR(host));;
-
-    //    if (!query.empty()) {
-    //      // Split the query parameter string here, if desired.
-    //      // We assume we extracted a string called 'id' here.
-    //    }
-    //    else {
-    //      // Reject if no query parameter provided, for example.
-    //      //return false;
-    //    }
-
-    //    {
-    //      std::unique_lock<std::mutex> lock(m_mux);
-    //      m_connectionsStrMap.insert(std::make_pair(hdl, connId));
-    //    }
-
-    //    if (m_openHandlerFunc) {
-    //      m_openHandlerFunc(connId);
-    //    }
-    //    else {
-    //      TRC_WARNING("Message handler is not registered");
-    //    }
-    //  }
-    //  TRC_FUNCTION_LEAVE(PAR(valid));
-    //  return valid;
-    //}
-
-    void on_fail1(connection_hdl chdl)
+    void on_fail(connection_hdl chdl, std::string errstr)
     {
       TRC_FUNCTION_ENTER("on_fail(): ");
-      //auto con = m_server.get_con_from_hdl(hdl);
-      //websocketpp::lib::error_code ec = con->get_ec();
-      //TRC_WARNING("on_fail(): Error: " << NAME_PAR(hdl, hdl.lock().get()) << " " << ec.message());
+      TRC_WARNING("on_fail(): Error: " << NAME_PAR(hdl, chdl.lock().get()) << " " << errstr);
       TRC_FUNCTION_LEAVE("");
     }
 
-    bool on_validate1(connection_hdl chdl, const std::string & connId, const std::string & host, const std::string & query)
+    bool on_validate(connection_hdl chdl, const std::string & connId, const std::string & host, const std::string & query)
     {
       //TODO on_connection can be use instead, however we're ready for authentication by a token
       TRC_FUNCTION_ENTER("");
@@ -403,6 +168,8 @@ namespace shape {
           // Reject if no query parameter provided, for example.
           //return false;
         }
+
+        TRC_INFORMATION("Connected: " << PAR(connId) << PAR(host));;
 
         {
           std::unique_lock<std::mutex> lock(m_mux);
@@ -469,70 +236,6 @@ namespace shape {
       }
       TRC_FUNCTION_LEAVE("");
     }
-
-    // See https://wiki.mozilla.org/Security/Server_Side_TLS for more details about
-    // the TLS modes. The code below demonstrates how to implement both the modern
-    enum tls_mode {
-      MOZILLA_INTERMEDIATE = 1,
-      MOZILLA_MODERN = 2
-    };
-
-#if 0
-    context_ptr on_tls_init(tls_mode mode, connection_hdl hdl)
-    {
-      TRC_FUNCTION_ENTER(NAME_PAR(mode, (mode == MOZILLA_MODERN ? "Mozilla Modern" : "Mozilla Intermediate")) << NAME_PAR(hdl, hdl.lock().get()));
-
-      namespace asio = websocketpp::lib::asio;
-
-      context_ptr ctx = websocketpp::lib::make_shared<asio::ssl::context>(asio::ssl::context::sslv23);
-
-      try {
-        if (mode == MOZILLA_MODERN) {
-          // Modern disables TLSv1
-          ctx->set_options(asio::ssl::context::default_workarounds |
-            asio::ssl::context::no_sslv2 |
-            asio::ssl::context::no_sslv3 |
-            asio::ssl::context::no_tlsv1 |
-            asio::ssl::context::single_dh_use);
-        }
-        else {
-          ctx->set_options(asio::ssl::context::default_workarounds |
-            asio::ssl::context::no_sslv2 |
-            asio::ssl::context::no_sslv3 |
-            asio::ssl::context::single_dh_use);
-        }
-        //ctx->set_password_callback(bind(&get_password));
-        ctx->use_certificate_chain_file(m_cert);
-        ctx->use_private_key_file(m_key, asio::ssl::context::pem);
-
-        // Example method of generating this file:
-        // `openssl dhparam -out dh.pem 2048`
-        // Mozilla Intermediate suggests 1024 as the minimum size to use
-        // Mozilla Modern suggests 2048 as the minimum size to use.
-        //ctx->use_tmp_dh_file("./tls/dh.pem");
-
-        std::string ciphers;
-
-        if (mode == MOZILLA_MODERN) {
-          ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK";
-        }
-        else {
-          ciphers = "ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA";
-        }
-
-        if (SSL_CTX_set_cipher_list(ctx->native_handle(), ciphers.c_str()) != 1) {
-          std::cout << "Error setting cipher list" << std::endl;
-        }
-      }
-      catch (std::exception& e) {
-        std::cout << "Exception: " << e.what() << std::endl;
-      }
-
-      TRC_FUNCTION_LEAVE("");
-      return ctx;
-    }
-#endif
-    ///////////////////////////////
 
   public:
     Imp()
@@ -774,33 +477,24 @@ namespace shape {
 
       if (! m_wss) {
         std::unique_ptr<WsServerPlain> ptr = std::unique_ptr<WsServerPlain>(shape_new WsServerPlain);
-        //initServer(ptr->getServer());
         ptr->setOnFunctions(
-          [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate1(hdl, connId, host, query); }
-          , [&](connection_hdl hdl) { on_fail1(hdl); }
-          , [&](connection_hdl hdl) { on_close(hdl); }
-          , [&](connection_hdl hdl, std::string msg) { on_message1(hdl, msg); }
+          [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate(hdl, connId, host, query); }
+        , [&](connection_hdl hdl, std::string errstr) { on_fail(hdl, errstr); }
+        , [&](connection_hdl hdl) { on_close(hdl); }
+          , [&](connection_hdl hdl, std::string msg) { on_message(hdl, msg); }
           );
         m_server = std::move(ptr);
       }
       else {
         std::unique_ptr<WsServerTls> ptr = std::unique_ptr<WsServerTls>(shape_new WsServerTls);
-        //initServer(ptr->getServer());
         ptr->setOnFunctions(
-          [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate1(hdl, connId, host, query); }
-        , [&](connection_hdl hdl) { on_fail1(hdl); }
+          [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate(hdl, connId, host, query); }
+        , [&](connection_hdl hdl, std::string errstr) { on_fail(hdl, errstr); }
         , [&](connection_hdl hdl) { on_close(hdl); }
-        , [&](connection_hdl hdl, std::string msg) { on_message1(hdl, msg); }
+        , [&](connection_hdl hdl, std::string msg) { on_message(hdl, msg); }
         );
+        ptr->setTls(m_cert, m_key);
         m_server = std::move(ptr);
-
-        //std::unique_ptr<WsServerTls> ptr = std::unique_ptr<WsServerTls>(shape_new WsServerTls);
-        //initServer(ptr->getServer());
-        //ptr->getServer().set_tls_init_handler([&](connection_hdl hdl)->context_ptr {
-        //  //return on_tls_init(MOZILLA_INTERMEDIATE, hdl);
-        //  return on_tls_init(MOZILLA_MODERN, hdl);
-        //});
-        //m_server = std::move(ptr);
       }
 
       if (m_autoStart) {
