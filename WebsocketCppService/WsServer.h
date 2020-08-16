@@ -56,6 +56,8 @@ namespace shape {
   class WsServerTyped
   {
   public:
+    typedef typename T::message_ptr MsgPtr;
+
     ~WsServerTyped()
     {}
 
@@ -161,7 +163,7 @@ namespace shape {
         }
       });
 
-      m_server.set_message_handler([&](connection_hdl hdl, T::message_ptr msg) {
+      m_server.set_message_handler([&](connection_hdl hdl, MsgPtr msg) {
         TRC_FUNCTION_ENTER("");
 
         std::string msgPayload = msg->get_payload().data();
