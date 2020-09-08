@@ -32,8 +32,6 @@
 #include "rapidjson/document.h"
 #include "rapidjson/pointer.h"
 
-#include "LogStream.h"
-
 #include "shape__WebsocketCppService.hxx"
 
 #ifdef TRC_CHANNEL
@@ -72,9 +70,6 @@ namespace shape {
     MessageStrHandlerFunc m_messageStrHandlerFunc;
     OpenHandlerFunc m_openHandlerFunc;
     CloseHandlerFunc m_closeHandlerFunc;
-
-    LogStream m_wsLoger;
-    std::ostream m_wsLogerOs;
 
     // lock mux before
     bool getHndl(const std::string& connId, connection_hdl& hdl)
@@ -239,7 +234,6 @@ namespace shape {
 
   public:
     Imp()
-      :m_wsLogerOs(&m_wsLoger)
     {
     }
 

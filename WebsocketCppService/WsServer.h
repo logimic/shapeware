@@ -64,8 +64,10 @@ namespace shape {
       :m_wsLogerOs(&m_wsLoger)
     {
       // set up access channels to only log interesting things
-      m_server.set_access_channels(websocketpp::log::alevel::all);
-      m_server.set_access_channels(websocketpp::log::elevel::all);
+      m_server.clear_access_channels(websocketpp::log::alevel::all);
+      m_server.set_access_channels(websocketpp::log::alevel::access_core);
+      m_server.set_access_channels(websocketpp::log::alevel::app);
+      m_server.set_access_channels(websocketpp::log::elevel::info);
 
       // Set custom logger (ostream-based).
       m_server.get_alog().set_ostream(&m_wsLogerOs);
