@@ -103,6 +103,26 @@ namespace shape {
       MqttOnSubscribeQosHandlerFunc m_onSubscribeHndl;
     };
 
+    class UnsubscribeContext
+    {
+    public:
+      UnsubscribeContext() = default;
+      UnsubscribeContext(const std::string & topic, MqttOnUnsubscribeHandlerFunc onUnsubscribeHndl)
+        :m_topic(topic)
+        , m_onUnsubscribeHndl(onUnsubscribeHndl)
+      {}
+
+      void onUnsubscribe(bool result)
+      {
+        m_onUnsubscribeHndl(m_topic, result);
+      }
+
+    private:
+      std::string m_topic;
+      int m_qos;
+      MqttOnUnsubscribeHandlerFunc m_onUnsubscribeHndl;
+    };
+
     class PublishContext
     {
     public:
@@ -143,6 +163,9 @@ namespace shape {
 
     // map of [token, subscribeContext] used to invoke onSubscribe according token in asyc result
     std::map<MQTTAsync_token, SubscribeContext> m_subscribeContextMap;
+
+    // map of [token, subscribeContext] used to invoke onSubscribe according token in asyc result
+    std::map<MQTTAsync_token, UnsubscribeContext> m_unsubscribeContextMap;
 
     // map of [token, publishContext] used to invoke onDelivery according token in asyc result
     std::map<MQTTAsync_token, PublishContext> m_publishContextMap;
@@ -193,7 +216,7 @@ namespace shape {
       TRC_FUNCTION_ENTER(PAR(clientId));
 
       if (nullptr != m_client) {
-        THROW_EXC_TRC_WAR(std::logic_error, PAR(clientId) << " already created. Was IMqttService::create(clientId) called ealrlier?" );
+        THROW_EXC_TRC_WAR(std::logic_error, PAR(clientId) << " already created. Was IMqttService::create(clientId) called earlier?" );
       }
 
       // init connection options
@@ -442,6 +465,34 @@ namespace shape {
       TRC_DEBUG(PAR(subs_opts.token))
       m_subscribeContextMap[subs_opts.token] = SubscribeContext(topic, qos, onSubscribe);
       m_onMessageHndlMap[topic] = onMessage;
+
+      TRC_FUNCTION_LEAVE("")
+    }
+
+    void unsubscribe(const std::string& topic, MqttOnUnsubscribeHandlerFunc onUnsubscribe)
+    {
+      TRC_FUNCTION_ENTER(PAR(topic));
+
+      if (nullptr == m_client) {
+        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
+      }
+
+      std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+
+      MQTTAsync_responseOptions subs_opts = MQTTAsync_responseOptions_initializer;
+
+      // init subscription options
+      subs_opts.onSuccess = s_onUnsubscribe;
+      subs_opts.onFailure = s_onUnsubscribeFailure;
+      subs_opts.context = this;
+
+      int retval;
+      if ((retval = MQTTAsync_unsubscribe(m_client, topic.c_str(), &subs_opts)) != MQTTASYNC_SUCCESS) {
+        THROW_EXC_TRC_WAR(std::logic_error, "MQTTAsync_unsubscribe() failed: " << PAR(retval) << PAR(topic));
+      }
+
+      TRC_DEBUG(PAR(subs_opts.token))
+        m_unsubscribeContextMap[subs_opts.token] = UnsubscribeContext(topic, onUnsubscribe);
 
       TRC_FUNCTION_LEAVE("")
     }
@@ -703,43 +754,83 @@ namespace shape {
     }
 
     ///////////////////////
-    // send (publish) functions
+    // unsubscribe functions
     ///////////////////////
 
-    // process function of message queue
-    //bool sendTo(const std::string& topic, const std::vector<uint8_t> & msg, int qos)
-    //{
-    //  TRC_FUNCTION_ENTER("Sending to MQTT: " << PAR(topic) << std::endl <<
-    //    MEM_HEX_CHAR(msg.data(), msg.size()));
+    //------------------------
+    // subscribe success
+    static void s_onUnsubscribe(void* context, MQTTAsync_successData* response)
+    {
+      ((MqttService::Imp*)context)->onUnsubscribe(response);
+    }
+    void onUnsubscribe(MQTTAsync_successData* response)
+    {
+      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : -1)));
 
-    //  bool bretval = false;
-    //  int retval;
-    //  MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
+      MQTTAsync_token token = 0;
 
-    //  pubmsg.payload = (void*)msg.data();
-    //  pubmsg.payloadlen = (int)msg.size();
-    //  pubmsg.qos = qos;
-    //  pubmsg.retained = 0;
+      if (response) {
+        token = response->token;
+      }
 
-    //  m_deliveredtoken = 0;
+      std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
-    //  //MQTTAsync_deliveryComplete
+      //based on newer subscribe() version
+      auto found = m_unsubscribeContextMap.find(token);
+      if (found != m_unsubscribeContextMap.end()) {
+        auto & sc = found->second;
+        sc.onUnsubscribe(true);
+        m_unsubscribeContextMap.erase(found);
+      }
+      else {
+        TRC_WARNING("Missing onUnsubscribe handler: " << PAR(token));
+      }
 
-    //  if ((retval = MQTTAsync_sendMessage(m_client, topic.c_str(), &pubmsg, &m_send_opts)) == MQTTASYNC_SUCCESS) {
-    //    bretval = true;
-    //    m_deliveredtoken = m_send_opts.token;
-    //  }
-    //  else {
-    //    TRC_WARNING("Failed to start sendMessage: " << PAR(retval) << " => Message queue is suspended");
-    //    m_messageQueue->suspend();
-    //    if (!m_buffered) {
-    //      bretval = true; // => pop anyway from queue
-    //    }
-    //  }
+      TRC_FUNCTION_LEAVE("");
+    }
 
-    //  TRC_FUNCTION_LEAVE("");
-    //  return bretval;
-    //}
+    //------------------------
+    // subscribe failure
+    static void s_onUnsubscribeFailure(void* context, MQTTAsync_failureData* response) {
+      ((MqttService::Imp*)context)->onUnsubscribeFailure(response);
+    }
+    void onUnsubscribeFailure(MQTTAsync_failureData* response)
+    {
+      TRC_FUNCTION_ENTER("");
+
+      MQTTAsync_token token = 0;
+      int code = 0;
+      std::string message;
+
+      if (response) {
+        token = response->token;
+        code = response->code;
+        message = response->message ? response->message : "";
+      }
+
+      TRC_WARNING("Unsubscribe failed: " <<
+        PAR(token) <<
+        PAR(code) <<
+        PAR(message)
+      );
+
+      //based on newer subscribe() version
+      auto found = m_unsubscribeContextMap.find(token);
+      if (found != m_unsubscribeContextMap.end()) {
+        auto & sc = found->second;
+        sc.onUnsubscribe(false);
+        m_unsubscribeContextMap.erase(found);
+      }
+      else {
+        TRC_WARNING("Missing onUnsubscribe handler: " << PAR(token));
+      }
+
+      TRC_FUNCTION_LEAVE("");
+    }
+
+    ///////////////////////
+    // send (publish) functions
+    ///////////////////////
 
     // process function of message queue
     bool publishFromQueue(const PublishContext & pc)
@@ -1206,6 +1297,11 @@ namespace shape {
     , MqttOnSubscribeQosHandlerFunc onSubscribe, MqttMessageStrHandlerFunc onMessage)
   {
     m_impl->subscribe(topic, qos, onSubscribe, onMessage);
+  }
+
+  void MqttService::unsubscribe(const std::string& topic, MqttOnUnsubscribeHandlerFunc onUnsubscribe)
+  {
+    m_impl->unsubscribe(topic, onUnsubscribe);
   }
 
   void MqttService::publish(const std::string& topic, const std::vector<uint8_t> & msg, int qos)

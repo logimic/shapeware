@@ -44,7 +44,8 @@ namespace shape {
     void subscribe(const std::string& topic, int qos = 0) override;
     void subscribe(const std::string& topic, int qos
       , MqttOnSubscribeQosHandlerFunc onSubscribe, MqttMessageStrHandlerFunc onMessage) override;
-    
+    void unsubscribe(const std::string& topic, MqttOnUnsubscribeHandlerFunc onUnsubscribe) override;
+
     void publish(const std::string& topic, const std::vector<uint8_t> & msg, int qos = 0) override;
     void publish(const std::string& topic, const std::string & msg, int qos = 0) override;
     void publish(const std::string& topic, int qos, const std::vector<uint8_t> & msg
