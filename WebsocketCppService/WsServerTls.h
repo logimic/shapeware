@@ -34,7 +34,7 @@ namespace shape {
     void stop_listening() override;
     void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) override;
     void setOnFunctions(OnValidate onValidate, OnFail onFail, OnClose onClose, OnMessage onMessage) override;
-    void setTls(const std::string & cert, const std::string & key);
+    void setTls(const std::string &mode, const std::string & cert, const std::string & key);
 
   private:
     class Imp;

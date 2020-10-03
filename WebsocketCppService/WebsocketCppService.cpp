@@ -59,7 +59,8 @@ namespace shape {
 
     bool m_autoStart = true;
     bool m_acceptOnlyLocalhost = false;
-    bool m_wss = false;
+    bool m_tlsEnabled = false;
+    std::string m_tlsMode = "intermediate";
     std::string m_cert;
     std::string m_key;
 
@@ -390,6 +391,18 @@ namespace shape {
       return m_port;
     }
 
+    std::string getPath(const std::string &path)
+    {
+      if (path.empty()) {
+        return "";
+      }
+      if (path.at(0) == '/') {
+        return path;
+      }
+      std::string configDir = m_iLaunchService->getConfigurationDir();
+      return configDir + "/certs/" + path;
+    }
+
     void activate(const shape::Properties *props)
     {
       TRC_FUNCTION_ENTER("");
@@ -434,60 +447,67 @@ namespace shape {
       }
 
       {
-        const Value* v = Pointer("/wss").Get(doc);
+        const Value* v = Pointer("/tlsEnabled").Get(doc);
         if (v && v->IsBool()) {
-          m_wss = v->GetBool();
+          m_tlsEnabled = v->GetBool();
         }
         else {
-          TRC_WARNING("wss not specified => used default: " << PAR(m_wss));
+          TRC_WARNING("TLS enablement not specified => used default: " << PAR(m_tlsEnabled));
         }
       }
 
       {
-        const Value* v = Pointer("/KeyStore").Get(doc);
+        const Value* v = Pointer("/tlsMode").Get(doc);
+        if (v && v->IsString()) {
+          m_tlsMode = v->GetString();
+        } else {
+          TRC_WARNING("TLS mode not specified => used default: " << PAR(m_tlsMode));
+        }
+      }
+
+      {
+        const Value* v = Pointer("/certificate").Get(doc);
         if (v && v->IsString()) {
           m_cert = v->GetString();
         }
         else {
-          TRC_WARNING("KeyStore not specified => used default: " << PAR(m_cert));
+          TRC_WARNING("Certificate not specified => used default: " << PAR(m_cert));
         }
       }
 
       {
-        const Value* v = Pointer("/PrivateKey").Get(doc);
+        const Value* v = Pointer("/privateKey").Get(doc);
         if (v && v->IsString()) {
           m_key = v->GetString();
         }
         else {
-          TRC_WARNING("PrivateKey not specified => used default: " << PAR(m_key));
+          TRC_WARNING("Private key not specified => used default: " << PAR(m_key));
         }
       }
 
-      TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart) << PAR(m_acceptOnlyLocalhost) << PAR(m_wss) << PAR(m_cert) << PAR(m_key));
+      TRC_INFORMATION(PAR(m_port) << PAR(m_autoStart) << PAR(m_acceptOnlyLocalhost) << PAR(m_tlsEnabled) << PAR(m_cert) << PAR(m_key));
 
-      std::string dataDir = m_iLaunchService->getDataDir();
-      m_cert = m_cert.empty() ? "" : dataDir + "/cert/" + m_cert;
-      m_key = m_key.empty() ? "" : dataDir + "/cert/" + m_key;
+      m_cert = getPath(m_cert);
+      m_key = getPath(m_key);
 
-      if (! m_wss) {
+      if (!m_tlsEnabled) {
         std::unique_ptr<WsServerPlain> ptr = std::unique_ptr<WsServerPlain>(shape_new WsServerPlain);
         ptr->setOnFunctions(
           [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate(hdl, connId, host, query); }
-        , [&](connection_hdl hdl, std::string errstr) { on_fail(hdl, errstr); }
+        , [&](connection_hdl hdl, const std::string &errstr) { on_fail(hdl, errstr); }
         , [&](connection_hdl hdl) { on_close(hdl); }
-          , [&](connection_hdl hdl, std::string msg) { on_message(hdl, msg); }
+          , [&](connection_hdl hdl, const std::string &msg) { on_message(hdl, msg); }
           );
         m_server = std::move(ptr);
-      }
-      else {
+      } else {
         std::unique_ptr<WsServerTls> ptr = std::unique_ptr<WsServerTls>(shape_new WsServerTls);
         ptr->setOnFunctions(
           [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate(hdl, connId, host, query); }
-        , [&](connection_hdl hdl, std::string errstr) { on_fail(hdl, errstr); }
+        , [&](connection_hdl hdl, const std::string &errstr) { on_fail(hdl, errstr); }
         , [&](connection_hdl hdl) { on_close(hdl); }
-        , [&](connection_hdl hdl, std::string msg) { on_message(hdl, msg); }
+        , [&](connection_hdl hdl, const std::string &msg) { on_message(hdl, msg); }
         );
-        ptr->setTls(m_cert, m_key);
+        ptr->setTls(m_tlsMode, m_cert, m_key);
         m_server = std::move(ptr);
       }
 
@@ -534,8 +554,7 @@ namespace shape {
         // Start the ASIO io_service run loop
         try {
           m_server->run();
-        }
-        catch (websocketpp::exception const & e) {
+        } catch (websocketpp::exception const & e) {
           CATCH_EXC_TRC_WAR(websocketpp::exception, e, "Unexpected Asio error: ")
         }
       }
