@@ -6,7 +6,11 @@ project(WebsocketCppService)
 #  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /bigobj")
 #endif ()
 
-find_package(OpenSSL REQUIRED)
+if(${WS_WITHOUT_TLS})
+  add_definitions(-DWS_WITHOUT_TLS)
+else()
+  find_package(OpenSSL REQUIRED)
+endif()
 
 set(COMPONENT shape::WebsocketCppService)
 DeclareShapeComponent(${COMPONENT})
@@ -33,7 +37,8 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-#target_link_libraries(${PROJECT_NAME})
-target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+if(NOT ${WS_WITHOUT_TLS})
+  target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+endif()
 
 DeployShapeComponent(${PROJECT_NAME})

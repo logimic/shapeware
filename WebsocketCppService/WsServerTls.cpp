@@ -14,6 +14,8 @@
 * limitations under the License.
 */
 
+#ifndef WS_WITHOUT_TLS
+
 #include "WsServerTls.h"
 #include "Trace.h"
 
@@ -201,3 +203,4 @@ namespace shape {
   }
 
 }
+#endif

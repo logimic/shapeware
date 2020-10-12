@@ -26,7 +26,10 @@
 #define _WEBSOCKETPP_CPP11_INTERNAL_
 
 #include "WsServerPlain.h"
+
+#ifndef WS_WITHOUT_TLS
 #include "WsServerTls.h"
+#endif
 
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
@@ -500,6 +503,9 @@ namespace shape {
           );
         m_server = std::move(ptr);
       } else {
+#ifdef WS_WITHOUT_TLS
+        THROW_EXC_TRC_WAR(std::logic_error, "WebsocketCppService is built without TLS");
+#else
         std::unique_ptr<WsServerTls> ptr = std::unique_ptr<WsServerTls>(shape_new WsServerTls);
         ptr->setOnFunctions(
           [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate(hdl, connId, host, query); }
@@ -509,6 +515,7 @@ namespace shape {
         );
         ptr->setTls(m_tlsMode, m_cert, m_key);
         m_server = std::move(ptr);
+#endif
       }
 
       if (m_autoStart) {
