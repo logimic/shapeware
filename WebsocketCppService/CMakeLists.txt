@@ -37,7 +37,9 @@ else()
     add_library(${PROJECT_NAME} SHARED ${_HDRFILES} ${_SRCFILES})
 endif()
 
-if(NOT ${WS_WITHOUT_TLS})
+if(${WS_WITHOUT_TLS})
+  message(STATUS "Building without TLS")
+else()
   target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 endif()
 
