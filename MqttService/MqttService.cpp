@@ -838,6 +838,9 @@ namespace shape {
       TRC_FUNCTION_ENTER("Sending to MQTT: " << NAME_PAR(topic, pc.getTopic()) << std::endl <<
         MEM_HEX_CHAR(pc.getMsg().data(), pc.getMsg().size()));
 
+      //TODO
+      TRC_INFORMATION("Sending to MQTT: " << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(size, pc.getTopic()) << std::endl);
+
       bool bretval = false;
       int retval;
       MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
@@ -881,9 +884,6 @@ namespace shape {
     }
     void onSend(MQTTAsync_successData* response)
     {
-      //TODO
-      return;
-
       TRC_DEBUG("Message sent successfuly: " << NAME_PAR(token, (response ? response->token : 0)));
       
       if (response) {
@@ -918,9 +918,6 @@ namespace shape {
     }
     void onSendFailure(MQTTAsync_failureData* response)
     {
-      //TODO
-      return;
-
       TRC_FUNCTION_ENTER("");
 
       MQTTAsync_token token = 0;
