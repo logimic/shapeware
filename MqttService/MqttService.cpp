@@ -301,7 +301,7 @@ namespace shape {
         m_connectThread.join();
 
       TRC_WARNING(PAR(m_mqttClientId) << " Disconnect: => Message queue is suspended ");
-      m_messageQueue->suspend();
+      //m_messageQueue->suspend();
 
       // init disconnect options
       MQTTAsync_disconnectOptions disc_opts = MQTTAsync_disconnectOptions_initializer;
@@ -866,7 +866,7 @@ namespace shape {
       }
       else {
         TRC_WARNING("Failed to start sendMessage: " << PAR(retval) << " => Message queue is suspended");
-        m_messageQueue->suspend();
+        //m_messageQueue->suspend();
         if (!m_buffered) {
           bretval = true; // => pop anyway from queue
         }
@@ -953,7 +953,7 @@ namespace shape {
       
       
       TRC_WARNING("Message sent failure: " << PAR(response->code) << " => Message queue is suspended");
-      m_messageQueue->suspend();
+      //m_messageQueue->suspend();
     }
 
     ///////////////////////
@@ -1077,7 +1077,7 @@ namespace shape {
     void connlost(char *cause) {
       TRC_FUNCTION_ENTER("");
       TRC_WARNING("Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")) << " => Message queue is suspended");
-      m_messageQueue->suspend();
+      //m_messageQueue->suspend();
       connect();
       TRC_FUNCTION_LEAVE("");
     }
