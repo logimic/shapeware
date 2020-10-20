@@ -881,6 +881,9 @@ namespace shape {
     }
     void onSend(MQTTAsync_successData* response)
     {
+      //TODO
+      return;
+
       TRC_DEBUG("Message sent successfuly: " << NAME_PAR(token, (response ? response->token : 0)));
       
       if (response) {
@@ -915,6 +918,9 @@ namespace shape {
     }
     void onSendFailure(MQTTAsync_failureData* response)
     {
+      //TODO
+      return;
+
       TRC_FUNCTION_ENTER("");
 
       MQTTAsync_token token = 0;
@@ -932,6 +938,8 @@ namespace shape {
         PAR(code) <<
         PAR(message)
       );
+
+      std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
       auto found = m_publishContextMap.find(token);
       if (found != m_publishContextMap.end()) {
