@@ -839,7 +839,7 @@ namespace shape {
         MEM_HEX_CHAR(pc.getMsg().data(), pc.getMsg().size()));
 
       //TODO
-      TRC_INFORMATION("Sending to MQTT: " << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(size, pc.getTopic()) << std::endl);
+      TRC_INFORMATION("Sending to MQTT: " << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(size, pc.getMsg().size()) << std::endl);
 
       bool bretval = false;
       int retval;
