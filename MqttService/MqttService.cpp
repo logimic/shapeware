@@ -854,6 +854,10 @@ namespace shape {
       send_opts.onSuccess = s_onSend;
       send_opts.onFailure = s_onSendFailure;
       send_opts.context = this;
+      
+      //TODO 
+      static unsigned tokenCnt = 0;
+      send_opts.token = tokenCnt++;
 
       if ((retval = MQTTAsync_sendMessage(m_client, pc.getTopic().c_str(), &pubmsg, &send_opts)) == MQTTASYNC_SUCCESS) {
         bretval = true;
@@ -863,7 +867,7 @@ namespace shape {
       
         //TODO
         std::string mstr((char*)pc.getMsg().data(), pc.getMsg().size() > 80 ? 80 : pc.getMsg().size());
-        TRC_INFORMATION("<<< Sending to MQTT: " << NAME_PAR(token, send_opts.token) << NAME_PAR(size, pc.getMsg().size())
+        TRC_INFORMATION("<<< Sending to MQTT: " << PAR(tokenCnt) << NAME_PAR(token, send_opts.token) << NAME_PAR(size, pc.getMsg().size())
           << NAME_PAR(topic, pc.getTopic()) << PAR(mstr) << std::endl);
 
       }
