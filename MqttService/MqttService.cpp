@@ -839,7 +839,8 @@ namespace shape {
         MEM_HEX_CHAR(pc.getMsg().data(), pc.getMsg().size()));
 
       //TODO
-      TRC_INFORMATION("Sending to MQTT: " << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(size, pc.getMsg().size()) << std::endl);
+      std::string mstr((char*)pc.getMsg().data(), pc.getMsg().size() > 80 ? 80 : pc.getMsg().size());
+      TRC_INFORMATION("<<< Sending to MQTT: " << NAME_PAR(size, pc.getMsg().size()) << NAME_PAR(topic, pc.getTopic()) << PAR(mstr) << std::endl);
 
       bool bretval = false;
       int retval;
@@ -886,6 +887,9 @@ namespace shape {
     {
       TRC_DEBUG("Message sent successfuly: " << NAME_PAR(token, (response ? response->token : 0)));
       
+      //TODO
+      TRC_INFORMATION("Message sent successfuly: " << NAME_PAR(token, (response ? response->token : 0)));
+
       if (response) {
         std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
@@ -1025,6 +1029,11 @@ namespace shape {
       MQTTAsync_free(topicName);
       
       TRC_DEBUG(PAR(topic));
+
+      //TODO
+      std::string mstr((char*)msg.data(), msg.size() > 80 ? 80 : msg.size());
+      TRC_INFORMATION(">>> Received from MQTT: " << NAME_PAR(size, msg.size()) << PAR(topic) << PAR(mstr) << std::endl);
+
       bool handled = false;
 
       for (auto it : m_onMessageHndlMap) {
