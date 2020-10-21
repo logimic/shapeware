@@ -838,10 +838,6 @@ namespace shape {
       TRC_FUNCTION_ENTER("Sending to MQTT: " << NAME_PAR(topic, pc.getTopic()) << std::endl <<
         MEM_HEX_CHAR(pc.getMsg().data(), pc.getMsg().size()));
 
-      //TODO
-      std::string mstr((char*)pc.getMsg().data(), pc.getMsg().size() > 80 ? 80 : pc.getMsg().size());
-      TRC_INFORMATION("<<< Sending to MQTT: " << NAME_PAR(size, pc.getMsg().size()) << NAME_PAR(topic, pc.getTopic()) << PAR(mstr) << std::endl);
-
       bool bretval = false;
       int retval;
       MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
@@ -864,6 +860,12 @@ namespace shape {
       
         TRC_DEBUG(PAR(send_opts.token));
         m_publishContextMap[send_opts.token] = pc;
+      
+        //TODO
+        std::string mstr((char*)pc.getMsg().data(), pc.getMsg().size() > 80 ? 80 : pc.getMsg().size());
+        TRC_INFORMATION("<<< Sending to MQTT: " << NAME_PAR(token, send_opts.token) << NAME_PAR(size, pc.getMsg().size())
+          << NAME_PAR(topic, pc.getTopic()) << PAR(mstr) << std::endl);
+
       }
       else {
         TRC_WARNING("Failed to start sendMessage: " << PAR(retval) << " => Message queue is suspended");
