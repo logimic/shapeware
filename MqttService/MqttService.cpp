@@ -479,6 +479,8 @@ namespace shape {
 
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
+      m_onMessageHndlMap.erase(topic);
+
       MQTTAsync_responseOptions subs_opts = MQTTAsync_responseOptions_initializer;
 
       // init subscription options
@@ -858,7 +860,7 @@ namespace shape {
       if ((retval = MQTTAsync_sendMessage(m_client, pc.getTopic().c_str(), &pubmsg, &send_opts)) == MQTTASYNC_SUCCESS) {
         bretval = true;
       
-        TRC_DEBUG(PAR(send_opts.token));
+        TRC_DEBUG(PAR(send_opts.token) << PAR(m_publishContextMap.size()) );
         m_publishContextMap[send_opts.token] = pc;
       }
       else {
@@ -897,9 +899,9 @@ namespace shape {
         if (found != m_publishContextMap.end()) {
           auto & pc = found->second;
           pc.onSend(pc.getQos(), true);
-          if (pc.getQos() == 0) {
+          //if (pc.getQos() == 0) {
             m_publishContextMap.erase(found);
-          }
+          //}
         }
         else {
           TRC_WARNING("Missing publishContext: " << PAR(response->token));

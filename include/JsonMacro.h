@@ -1,5 +1,9 @@
 #pragma once
 
+#include "rapidjson/rapidjson.h"
+#include "rapidjson/document.h"
+#include "rapidjson/pointer.h"
+
 #define GET_JSON_AS_NUM(jsonVal, pointerPath, value) \
 { \
   const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
