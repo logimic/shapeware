@@ -67,10 +67,3 @@
   value = pv; \
 }
 
-//#define VERIFY_JSON_TYPE(jsonVal, jsonType) \
-//{ \
-//  if (!(jsonVal->Is##jsonType())) { \
-//    THROW_EXC_TRC_WAR(std::logic_error, "Missing or not array: \"" << pointerPath << "\"") \
-//  } \
-//  value = pv; \
-//}

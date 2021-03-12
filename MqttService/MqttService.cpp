@@ -17,6 +17,7 @@
 #define IMessageService_EXPORTS
 
 #include "MqttService.h"
+#include "mqtt_utils.h"
 #include "TaskQueue2.h"
 #include "MQTTAsync.h"
 #include <set>
@@ -1041,7 +1042,31 @@ namespace shape {
         }
 
         //handle + wildcard
-        //TODO
+        if (topic2.find('+') != std::string::npos) {
+          auto vect1 = tokenizeTopic(topic);
+          auto vect2 = tokenizeTopic(topic2);
+          bool match = true;
+
+          if (vect1.size() == vect2.size()) {
+            auto it1 = vect1.begin();
+            for (auto it2 = vect2.begin(); it2 != vect2.end(); it2++) {
+              if (*it2 == "+") {
+                ++it1;
+                continue;
+              }
+              if (*it2 != *it1) {
+                match = false;
+                break;
+              }
+              ++it1;
+            }
+
+            if (match) {
+              it.second(topic, std::string((char*)msg.data(), msg.size()));
+              handled = true;
+            }
+          }
+        }
       }
 
       if (!handled) {
@@ -1051,19 +1076,6 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
       return 1;
     }
-
-    //void handleMessage(const std::string & topic, const ustring& message)
-    //{
-    //  TRC_DEBUG("==================================" << std::endl <<
-    //    "Received from MQTT: " << std::endl << MEM_HEX_CHAR(message.data(), message.size()));
-
-    //  if (m_mqttMessageHandlerFunc) {
-    //    m_mqttMessageHandlerFunc(topic, std::vector<uint8_t>(message.data(), message.data() + message.size()));
-    //  }
-    //  if (m_mqttMessageStrHandlerFunc) {
-    //    m_mqttMessageStrHandlerFunc(topic, std::string((char*)message.data(), message.size()));
-    //  }
-    //}
 
     //------------------------
     // connection lost
