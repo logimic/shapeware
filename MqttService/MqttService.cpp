@@ -225,6 +225,7 @@ namespace shape {
       create_opts.sendWhileDisconnected = 1;
 
       if (!cp.brokerAddress.empty()) m_mqttBrokerAddr = cp.brokerAddress;
+      if (!cp.trustStore.empty()) m_trustStore = cp.trustStore;
       if (!cp.certificate.empty()) m_keyStore = cp.certificate;
       if (!cp.privateKey.empty()) m_privateKey = cp.privateKey;
 
@@ -587,9 +588,11 @@ namespace shape {
         }
 
         TRC_DEBUG("Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
+          << NAME_PAR(trustStore, (ssl_opts.trustStore ? ssl_opts.trustStore : ""))
           << NAME_PAR(keyStore, (ssl_opts.keyStore ? ssl_opts.keyStore : ""))
           << NAME_PAR(privateKey, (ssl_opts.privateKey ? ssl_opts.privateKey : ""))
-          );
+          << NAME_PAR(enableServerCertAuth, ssl_opts.enableServerCertAuth)
+        );
 
         if ((retval = MQTTAsync_connect(m_client, &conn_opts)) == MQTTASYNC_SUCCESS) {
         }
@@ -1018,7 +1021,7 @@ namespace shape {
         topic = std::string(topicName, topicLen);
       else
         topic = std::string(topicName);
-      //TODO wildcards in comparison - only # supported now
+
       MQTTAsync_freeMessage(&message);
       MQTTAsync_free(topicName);
       

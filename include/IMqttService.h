@@ -24,6 +24,7 @@ namespace shape {
     {
     public:
       std::string brokerAddress;
+      std::string trustStore;
       std::string certificate;
       std::string privateKey;
     };
