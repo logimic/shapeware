@@ -25,8 +25,19 @@ Install via apt-get:
 ```
 $ sudo apt-get install libssl-dev
 $ sudo apt-get install libcurl4-openssl-dev
-$ sudo apt-get install libzmqpp-dev
 $ sudo apt-get install libpaho-mqtt-dev
+```
+
+If requried ZeroMqService you have to add -DBUILD_ZEROMQ to ./buildMakeRel:
+```
+cmake -G "Unix Makefiles" -DBUILD_ZEROMQ:BOOL=true -DBUILD_TESTING:BOOL=false ...
+```
+
+and install:
+```
+$ sudo apt-get install libzmqpp-dev (libzmq3-dev on Buster and higher)
+```
+
 
 
 ```
