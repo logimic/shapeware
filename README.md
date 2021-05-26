@@ -38,10 +38,6 @@ and install:
 $ sudo apt-get install libzmqpp-dev (libzmq3-dev on Buster and higher)
 ```
 
-
-
-```
-
 ## Build
 
 ```
