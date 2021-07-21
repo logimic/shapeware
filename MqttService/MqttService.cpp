@@ -141,9 +141,9 @@ namespace shape {
       int getQos() const { return m_qos; }
       const std::vector<uint8_t> & getMsg() const { return m_msg; }
 
-      void onSend(int qos, bool result) const { m_onSendHndl(m_topic, qos, result); }
+      void onSend(int qos, bool result, int token) const { m_onSendHndl(m_topic, qos, result); }
 
-      void onDelivery(int qos, bool result) const { m_onDeliveryHndl(m_topic, qos, result); }
+      void onDelivery(int qos, bool result, int token) const { m_onDeliveryHndl(m_topic, qos, result); }
 
     private:
       std::string m_topic;
@@ -505,12 +505,12 @@ namespace shape {
     {
       auto onSend = [&](const std::string& topic, int qos, bool result)
       {
-        TRC_DEBUG("onSend: " << PAR(topic) << PAR(result));
+        TRC_DEBUG("onSend: " << PAR(topic) << PAR(qos) << PAR(result));
       };
 
       auto onDelivery = [&](const std::string& topic, int qos, bool result)
       {
-        TRC_DEBUG("onSend: " << PAR(topic) << PAR(result));
+        TRC_DEBUG("onDelivery: " << PAR(topic) << PAR(qos) << PAR(result));
       };
       
       publish(topic, qos, msg, onSend, onDelivery);
@@ -524,6 +524,10 @@ namespace shape {
     void publish(const std::string& topic, int qos, const std::vector<uint8_t> & msg
       , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery)
     {
+      TRC_FUNCTION_ENTER("");
+
+      TRC_INFORMATION(PAR(topic) << PAR(qos));
+
       if (nullptr == m_client) {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)" << PAR(topic));
       }
@@ -540,6 +544,7 @@ namespace shape {
           NAME_PAR(topic, task.getTopic()) << std::endl <<
           std::string((char*)task.getMsg().data(), task.getMsg().size()));
       }
+      TRC_FUNCTION_LEAVE("");
     }
 
     void publish(const std::string& topic, int qos, const std::string & msg
@@ -841,7 +846,7 @@ namespace shape {
     // process function of message queue
     bool publishFromQueue(const PublishContext & pc)
     {
-      TRC_FUNCTION_ENTER("Sending to MQTT: " << NAME_PAR(topic, pc.getTopic()) << std::endl <<
+      TRC_FUNCTION_ENTER("Sending to MQTT: " << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()) << std::endl <<
         MEM_HEX_CHAR(pc.getMsg().data(), pc.getMsg().size()));
 
       bool bretval = false;
@@ -864,7 +869,8 @@ namespace shape {
       if ((retval = MQTTAsync_sendMessage(m_client, pc.getTopic().c_str(), &pubmsg, &send_opts)) == MQTTASYNC_SUCCESS) {
         bretval = true;
       
-        TRC_DEBUG(PAR(send_opts.token) << PAR(m_publishContextMap.size()) );
+        TRC_INFORMATION(NAME_PAR(token, send_opts.token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
+          << NAME_PAR(publishContextMap.size, m_publishContextMap.size()));
         m_publishContextMap[send_opts.token] = pc;
       }
       else {
@@ -902,7 +908,8 @@ namespace shape {
         auto found = m_publishContextMap.find(response->token);
         if (found != m_publishContextMap.end()) {
           auto & pc = found->second;
-          pc.onSend(pc.getQos(), true);
+          TRC_INFORMATION(NAME_PAR(token, response->token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
+          pc.onSend(pc.getQos(), true, response->token);
           //if (pc.getQos() == 0) {
             m_publishContextMap.erase(found);
           //}
@@ -942,7 +949,8 @@ namespace shape {
       auto found = m_publishContextMap.find(token);
       if (found != m_publishContextMap.end()) {
         auto & pc = found->second;
-        pc.onSend(pc.getQos(), false);
+        TRC_WARNING(PAR(token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
+        pc.onSend(pc.getQos(), false, token);
         m_publishContextMap.erase(found);
       }
       else {
@@ -950,7 +958,6 @@ namespace shape {
       }
 
       TRC_FUNCTION_LEAVE("");
-
       
       
       TRC_WARNING("Message sent failure: " << PAR(response->code) << " => Message queue is suspended");
@@ -1003,6 +1010,17 @@ namespace shape {
     void delivered(MQTTAsync_token token)
     {
       TRC_FUNCTION_ENTER("Message delivery confirmed: " << PAR(token));
+
+      auto found = m_publishContextMap.find(token);
+      if (found != m_publishContextMap.end()) {
+        auto & pc = found->second;
+        TRC_INFORMATION(PAR(token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
+        pc.onDelivery(pc.getQos(), true, token);
+      }
+      else {
+        TRC_WARNING("Missing publishContext: " << PAR(token));
+      }
+
       TRC_FUNCTION_LEAVE("");
     }
 
