@@ -33,7 +33,7 @@ namespace shape {
     void close(connection_hdl chndl, const std::string & descr, const std::string & data) override;
     void stop_listening() override;
     void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) override;
-    void setOnFunctions(OnValidate onValidate, OnFail onFail, OnClose onClose, OnMessage onMessage) override;
+    void setOnFunctions(OnValidate onValidate, OnOpen onOpen, OnFail onFail, OnClose onClose, OnMessage onMessage) override;
     void setTls(const std::string &mode, const std::string & cert, const std::string & key);
 
   private:

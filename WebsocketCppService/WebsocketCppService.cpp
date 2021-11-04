@@ -143,7 +143,7 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
-    bool on_validate(connection_hdl chdl, const std::string & connId, const std::string & host, const std::string & query)
+    bool on_validate(connection_hdl chdl, const std::string &connId, const std::string &host)
     {
       //TODO on_connection can be use instead, however we're ready for authentication by a token
       TRC_FUNCTION_ENTER("");
@@ -157,33 +157,33 @@ namespace shape {
           valid = false;
         }
       }
-
-      if (valid) {
-        if (!query.empty()) {
-          // Split the query parameter string here, if desired.
-          // We assume we extracted a string called 'id' here.
-        }
-        else {
-          // Reject if no query parameter provided, for example.
-          //return false;
-        }
-
-        TRC_INFORMATION("Connected: " << PAR(connId) << PAR(host));;
-
-        {
-          std::unique_lock<std::mutex> lock(m_mux);
-          m_connectionsStrMap.insert(std::make_pair(chdl, connId));
-        }
-
-        if (m_openHandlerFunc) {
-          m_openHandlerFunc(connId);
-        }
-        else {
-          TRC_WARNING("Message handler is not registered");
-        }
-      }
       TRC_FUNCTION_LEAVE(PAR(valid));
       return valid;
+    }
+
+    void on_open(connection_hdl chdl, const std::string &connId, const std::string &host, const std::string &query) {
+      TRC_FUNCTION_ENTER("");
+      if (!query.empty()) {
+        // Split the query parameter string here, if desired.
+        // We assume we extracted a string called 'id' here.
+      } else {
+        // Reject if no query parameter provided, for example.
+        //return false;
+      }
+
+      TRC_INFORMATION("Connected: " << PAR(connId) << PAR(host));;
+
+      {
+        std::unique_lock<std::mutex> lock(m_mux);
+        m_connectionsStrMap.insert(std::make_pair(chdl, connId));
+      }
+
+      if (m_openHandlerFunc) {
+        m_openHandlerFunc(connId);
+      } else {
+        TRC_WARNING("Message handler is not registered");
+      }
+      TRC_FUNCTION_LEAVE("");
     }
 
 #if 0
@@ -496,11 +496,12 @@ namespace shape {
       if (!m_tlsEnabled) {
         std::unique_ptr<WsServerPlain> ptr = std::unique_ptr<WsServerPlain>(shape_new WsServerPlain);
         ptr->setOnFunctions(
-          [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate(hdl, connId, host, query); }
-        , [&](connection_hdl hdl, const std::string &errstr) { on_fail(hdl, errstr); }
-        , [&](connection_hdl hdl) { on_close(hdl); }
-          , [&](connection_hdl hdl, const std::string &msg) { on_message(hdl, msg); }
-          );
+          [&](connection_hdl hdl, const std::string &connId, const std::string &host) { return on_validate(hdl, connId, host); },
+          [&](connection_hdl hdl, const std::string &connId, const std::string &host, const std::string &query) { on_open(hdl, connId, host, query); },
+          [&](connection_hdl hdl, const std::string &errstr) { on_fail(hdl, errstr); },
+          [&](connection_hdl hdl) { on_close(hdl); },
+          [&](connection_hdl hdl, const std::string &msg) { on_message(hdl, msg); }
+        );
         m_server = std::move(ptr);
       } else {
 #ifdef WS_WITHOUT_TLS
@@ -508,10 +509,11 @@ namespace shape {
 #else
         std::unique_ptr<WsServerTls> ptr = std::unique_ptr<WsServerTls>(shape_new WsServerTls);
         ptr->setOnFunctions(
-          [&](connection_hdl hdl, const std::string & connId, const std::string & host, const std::string & query) { return on_validate(hdl, connId, host, query); }
-        , [&](connection_hdl hdl, const std::string &errstr) { on_fail(hdl, errstr); }
-        , [&](connection_hdl hdl) { on_close(hdl); }
-        , [&](connection_hdl hdl, const std::string &msg) { on_message(hdl, msg); }
+          [&](connection_hdl hdl, const std::string & connId, const std::string & host) { return on_validate(hdl, connId, host); },
+          [&](connection_hdl hdl, const std::string &connId, const std::string &host, const std::string &query) { on_open(hdl, connId, host, query); },
+          [&](connection_hdl hdl, const std::string &errstr) { on_fail(hdl, errstr); },
+          [&](connection_hdl hdl) { on_close(hdl); },
+          [&](connection_hdl hdl, const std::string &msg) { on_message(hdl, msg); }
         );
         ptr->setTls(m_tlsMode, m_cert, m_key);
         m_server = std::move(ptr);

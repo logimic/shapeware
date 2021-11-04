@@ -30,7 +30,7 @@ namespace shape {
   {
   };
 
-  
+
   WsServerPlain::WsServerPlain()
   {
     m_imp = shape_new WsServerPlain::Imp();
@@ -75,15 +75,15 @@ namespace shape {
   {
     m_imp->stop_listening();
   }
-  
+
   void WsServerPlain::getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri)
   {
     m_imp->getConnParams(chdl, connId, uri);
   }
 
-  void WsServerPlain::setOnFunctions(OnValidate onValidate, OnFail onFail, OnClose onClose, OnMessage onMessage)
+  void WsServerPlain::setOnFunctions(OnValidate onValidate, OnOpen onOpen, OnFail onFail, OnClose onClose, OnMessage onMessage)
   {
-    m_imp->setOnFunctions(onValidate, onFail, onClose, onMessage);
+    m_imp->setOnFunctions(onValidate, onOpen, onFail, onClose, onMessage);
   }
 
 }
