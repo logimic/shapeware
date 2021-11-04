@@ -42,13 +42,14 @@ namespace shape {
     virtual void close(connection_hdl chndl, const std::string & descr, const std::string & data) = 0;
     virtual void stop_listening() = 0;
     virtual void getConnParams(connection_hdl chdl, std::string & connId, websocketpp::uri_ptr & uri) = 0;
-    
-    typedef std::function<bool(connection_hdl chdl, const std::string & connId, const std::string & host, const std::string & query)> OnValidate;
+
+    typedef std::function<bool(connection_hdl chdl, const std::string & connId, const std::string & host)> OnValidate;
+    typedef std::function<void(connection_hdl chdl, const std::string & connId, const std::string & host, const std::string & query)> OnOpen;
     typedef std::function<void(connection_hdl hdl, std::string errstr)> OnFail;
     typedef std::function<void(connection_hdl hdl)> OnClose;
     typedef std::function<void(connection_hdl hdl, std::string msg)> OnMessage;
 
-    virtual void setOnFunctions(OnValidate onValidate, OnFail onFail, OnClose onClose, OnMessage onMessage) = 0;
+    virtual void setOnFunctions(OnValidate onValidate, OnOpen onOpen, OnFail onFail, OnClose onClose, OnMessage onMessage) = 0;
   };
 
   template<typename T>
@@ -82,14 +83,12 @@ namespace shape {
 
         std::string connId;
         websocketpp::uri_ptr uri;
-        
-        getConnParams(hdl, connId, uri);
 
-        std::string query = uri->get_query(); // returns empty string if no query string set.
+        getConnParams(hdl, connId, uri);
         std::string host = uri->get_host();
 
         if (m_onValidate) {
-          valid = m_onValidate(hdl, connId, host, query);
+          valid = m_onValidate(hdl, connId, host);
         }
         else {
           TRC_WARNING("onValidate not set");
@@ -97,6 +96,23 @@ namespace shape {
 
         TRC_FUNCTION_LEAVE(PAR(valid));
         return valid;
+      });
+
+      m_server.set_open_handler([&](connection_hdl hdl) {
+        TRC_FUNCTION_ENTER("");
+        std::string connId;
+        websocketpp::uri_ptr uri;
+
+        getConnParams(hdl, connId, uri);
+
+        std::string query = uri->get_query(); // returns empty string if no query string set.
+        std::string host = uri->get_host();
+        if (m_onOpen) {
+          m_onOpen(hdl, connId, host, query);
+        } else {
+          TRC_WARNING("onOpen not set");
+        }
+        TRC_FUNCTION_LEAVE("");
       });
 
       m_server.set_fail_handler([&](connection_hdl hdl) {
@@ -203,9 +219,10 @@ namespace shape {
       return m_server;
     }
 
-    void setOnFunctions(WsServer::OnValidate onValidate, WsServer::OnFail onFail, WsServer::OnClose onClose, WsServer::OnMessage onMessage)
+    void setOnFunctions(WsServer::OnValidate onValidate, WsServer::OnOpen onOpen, WsServer::OnFail onFail, WsServer::OnClose onClose, WsServer::OnMessage onMessage)
     {
       m_onValidate = onValidate;
+      m_onOpen = onOpen;
       m_onFail = onFail;
       m_onClose = onClose;
       m_onMessage = onMessage;
@@ -217,6 +234,7 @@ namespace shape {
     std::ostream m_wsLogerOs;
 
     WsServer::OnValidate m_onValidate;
+    WsServer::OnOpen m_onOpen;
     WsServer::OnFail m_onFail;
     WsServer::OnClose m_onClose;
     WsServer::OnMessage m_onMessage;

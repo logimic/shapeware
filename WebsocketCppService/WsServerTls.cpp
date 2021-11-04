@@ -184,9 +184,9 @@ namespace shape {
     m_imp->getConnParams(chdl, connId, uri);
   }
 
-  void WsServerTls::setOnFunctions(OnValidate onValidate, OnFail onFail, OnClose onClose, OnMessage onMessage)
+  void WsServerTls::setOnFunctions(OnValidate onValidate, OnOpen onOpen, OnFail onFail, OnClose onClose, OnMessage onMessage)
   {
-    m_imp->setOnFunctions(onValidate, onFail, onClose, onMessage);
+    m_imp->setOnFunctions(onValidate, onOpen, onFail, onClose, onMessage);
   }
 
   void WsServerTls::setTls(const std::string &modeStr, const std::string & cert, const std::string & key)
