@@ -452,6 +452,7 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       MQTTAsync_responseOptions subs_opts = MQTTAsync_responseOptions_initializer;
 
@@ -483,6 +484,7 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       m_onMessageHndlMap.erase(topic);
 
@@ -614,6 +616,7 @@ namespace shape {
         {
           TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
           std::unique_lock<std::mutex> lck(m_connectionMutex);
+          TRC_DEBUG(PAR(this) << "AQR-wait connectionMutex");
           if (m_connectionVariable.wait_for(lck, std::chrono::seconds(seconds),
             [this] {return m_connected == true || m_stopAutoConnect == true; })) {
 
@@ -662,6 +665,7 @@ namespace shape {
       {
         TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
         std::unique_lock<std::mutex> lck(m_connectionMutex);
+        TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
         m_connected = true;
         m_connectionVariable.notify_one();
         TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
@@ -693,6 +697,7 @@ namespace shape {
       {
         TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
         std::unique_lock<std::mutex> lck(m_connectionMutex);
+        TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
         m_connected = false;
         m_connectionVariable.notify_one();
         TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
@@ -712,7 +717,7 @@ namespace shape {
     }
     void onSubscribe(MQTTAsync_successData* response)
     {
-      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : -1)) << NAME_PAR(qos, (response ? response->alt.qos : -1)));
+      TRC_FUNCTION_ENTER(PAR(this) << NAME_PAR(token, (response ? response->token : -1)) << NAME_PAR(qos, (response ? response->alt.qos : -1)));
 
       MQTTAsync_token token = 0;
       int qos = 0;
@@ -724,6 +729,7 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       //based on newer subscribe() version
       auto found = m_subscribeContextMap.find(token);
@@ -791,7 +797,7 @@ namespace shape {
     }
     void onUnsubscribe(MQTTAsync_successData* response)
     {
-      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : -1)));
+      TRC_FUNCTION_ENTER(PAR(this) << NAME_PAR(token, (response ? response->token : -1)));
 
       MQTTAsync_token token = 0;
 
@@ -801,6 +807,7 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       //based on newer subscribe() version
       auto found = m_unsubscribeContextMap.find(token);
@@ -877,6 +884,7 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       MQTTAsync_responseOptions send_opts = MQTTAsync_responseOptions_initializer;
       // init send options
@@ -917,6 +925,7 @@ namespace shape {
       if (response) {
         TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
         std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+        TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
         /** For publish, the message being sent to the server. */
         //struct
@@ -997,7 +1006,7 @@ namespace shape {
     }
     void onDisconnect(MQTTAsync_successData* response)
     {
-      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : 0)));
+      TRC_FUNCTION_ENTER(PAR(this) << NAME_PAR(token, (response ? response->token : 0)));
       m_disconnect_promise_uptr->set_value(true);
 
       if (m_mqttOnDisconnectHandlerFunc) {
@@ -1012,7 +1021,7 @@ namespace shape {
       ((MqttService::Imp*)context)->onDisconnectFailure(response);
     }
     void onDisconnectFailure(MQTTAsync_failureData* response) {
-      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : 0)));
+      TRC_FUNCTION_ENTER(PAR(this) << NAME_PAR(token, (response ? response->token : 0)));
       m_disconnect_promise_uptr->set_value(false);
 
       TRC_FUNCTION_LEAVE(PAR(this));
