@@ -450,6 +450,7 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
       MQTTAsync_responseOptions subs_opts = MQTTAsync_responseOptions_initializer;
@@ -468,6 +469,7 @@ namespace shape {
       m_subscribeContextMap[subs_opts.token] = SubscribeContext(topic, qos, onSubscribe);
       m_onMessageHndlMap[topic] = onMessage;
 
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
       TRC_FUNCTION_LEAVE(PAR(this))
     }
 
@@ -479,6 +481,7 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
       m_onMessageHndlMap.erase(topic);
@@ -498,6 +501,7 @@ namespace shape {
       TRC_DEBUG(PAR(this) << PAR(subs_opts.token))
         m_unsubscribeContextMap[subs_opts.token] = UnsubscribeContext(topic, onUnsubscribe);
 
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
       TRC_FUNCTION_LEAVE(PAR(this))
     }
 
@@ -608,10 +612,15 @@ namespace shape {
         // wait for connection result
         TRC_DEBUG(PAR(this) << " Going to sleep for: " << PAR(seconds));
         {
+          TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
           std::unique_lock<std::mutex> lck(m_connectionMutex);
           if (m_connectionVariable.wait_for(lck, std::chrono::seconds(seconds),
-            [this] {return m_connected == true || m_stopAutoConnect == true; }))
+            [this] {return m_connected == true || m_stopAutoConnect == true; })) {
+
+            TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
             break;
+          }
+          TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
         }
         seconds = seconds < seconds_max ? seconds * 2 : seconds_max;
       }
@@ -651,9 +660,11 @@ namespace shape {
       );
 
       {
+        TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
         std::unique_lock<std::mutex> lck(m_connectionMutex);
         m_connected = true;
         m_connectionVariable.notify_one();
+        TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
       }
 
       if (m_mqttOnConnectHandlerFunc) {
@@ -680,9 +691,11 @@ namespace shape {
       }
 
       {
+        TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
         std::unique_lock<std::mutex> lck(m_connectionMutex);
         m_connected = false;
         m_connectionVariable.notify_one();
+        TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
       }
       TRC_FUNCTION_LEAVE(PAR(this));
     }
@@ -709,6 +722,7 @@ namespace shape {
         qos = response->alt.qos;
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
       //based on newer subscribe() version
@@ -722,6 +736,7 @@ namespace shape {
         TRC_WARNING(PAR(this) << " Missing onSubscribe handler: " << PAR(token));
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       TRC_FUNCTION_LEAVE(PAR(this));
     }
 
@@ -784,6 +799,7 @@ namespace shape {
         token = response->token;
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
       //based on newer subscribe() version
@@ -797,6 +813,7 @@ namespace shape {
         TRC_WARNING(PAR(this) << " Missing onUnsubscribe handler: " << PAR(token));
       }
 
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
       TRC_FUNCTION_LEAVE(PAR(this));
     }
 
@@ -858,6 +875,7 @@ namespace shape {
       pubmsg.qos = pc.getQos();
       pubmsg.retained = 0;
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
       MQTTAsync_responseOptions send_opts = MQTTAsync_responseOptions_initializer;
@@ -881,6 +899,7 @@ namespace shape {
         }
       }
 
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
       TRC_FUNCTION_LEAVE(PAR(this));
       return bretval;
     }
@@ -896,6 +915,7 @@ namespace shape {
       TRC_DEBUG(PAR(this) << " Message sent successfuly: " << NAME_PAR(token, (response ? response->token : 0)));
       
       if (response) {
+        TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
         std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
 
         /** For publish, the message being sent to the server. */
@@ -917,6 +937,7 @@ namespace shape {
         else {
           TRC_WARNING(PAR(this) << " Missing publishContext: " << PAR(response->token));
         }
+        TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
       }
     }
 
