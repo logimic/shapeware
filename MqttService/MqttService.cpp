@@ -214,7 +214,7 @@ namespace shape {
     //------------------------
     void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars())
     {
-      TRC_FUNCTION_ENTER(PAR(clientId));
+      TRC_FUNCTION_ENTER(PAR(this) << PAR(clientId));
 
       if (nullptr != m_client) {
         THROW_EXC_TRC_WAR(std::logic_error, PAR(clientId) << " already created. Was IMqttService::create(clientId) called earlier?" );
@@ -242,27 +242,27 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, "MQTTClient_setCallbacks() failed: " << PAR(retval));
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     void destroy(const std::string& clientId)
     {
-      TRC_FUNCTION_ENTER(PAR(clientId));
+      TRC_FUNCTION_ENTER(PAR(this) << PAR(clientId));
 
       disconnect();
 
       MQTTAsync_setCallbacks(m_client, nullptr, nullptr, nullptr, nullptr);
       MQTTAsync_destroy(&m_client);
 
-      TRC_INFORMATION(PAR(clientId) << "destroyed");
+      TRC_INFORMATION(PAR(this) << PAR(clientId) << "destroyed");
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     //------------------------
     void connect()
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
 
       if (nullptr == m_client) {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
@@ -275,7 +275,7 @@ namespace shape {
         m_connectThread.join();
 
       m_connectThread = std::thread([this]() { this->connectThread(); });
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     void connect(MqttOnConnectHandlerFunc onConnect)
@@ -287,10 +287,10 @@ namespace shape {
     //------------------------
     void disconnect()
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
 
       if (nullptr == m_client) {
-        TRC_WARNING("Client was not created at all");
+        TRC_WARNING(PAR(this) << " Client was not created at all");
       }
 
       m_disconnect_promise_uptr.reset(shape_new std::promise<bool>());
@@ -302,7 +302,7 @@ namespace shape {
       if (m_connectThread.joinable())
         m_connectThread.join();
 
-      TRC_WARNING(PAR(m_mqttClientId) << " Disconnect: => Message queue is suspended ");
+      TRC_WARNING(PAR(this) << PAR(m_mqttClientId) << " Disconnect: => Message queue is suspended ");
       m_messageQueue->suspend();
 
       // init disconnect options
@@ -313,17 +313,17 @@ namespace shape {
 
       int retval;
       if ((retval = MQTTAsync_disconnect(m_client, &disc_opts)) != MQTTASYNC_SUCCESS) {
-        TRC_WARNING("Failed to start disconnect: " << PAR(retval));
+        TRC_WARNING(PAR(this) << " Failed to start disconnect: " << PAR(retval));
       }
 
       std::chrono::milliseconds span(5000);
       if (disconnect_future.wait_for(span) == std::future_status::timeout) {
-        TRC_WARNING("Timeout to wait disconnect");
+        TRC_WARNING(PAR(this) << " Timeout to wait disconnect");
       }
 
-      TRC_INFORMATION("MQTT disconnected");
+      TRC_INFORMATION(PAR(this) << " MQTT disconnected");
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     void disconnect(MqttOnDisconnectHandlerFunc onDisconnect)
@@ -339,78 +339,78 @@ namespace shape {
 
     void registerMessageHandler(MqttMessageHandlerFunc hndl)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttMessageHandlerFunc = hndl;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void unregisterMessageHandler()
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttMessageHandlerFunc = nullptr;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void registerMessageStrHandler(MqttMessageStrHandlerFunc hndl)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttMessageStrHandlerFunc = hndl;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void unregisterMessageStrHandler()
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttMessageStrHandlerFunc = nullptr;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void registerOnConnectHandler(MqttOnConnectHandlerFunc hndl)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttOnConnectHandlerFunc = hndl;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void unregisterOnConnectHandler()
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttOnConnectHandlerFunc = nullptr;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void registerOnSubscribeHandler(MqttOnSubscribeHandlerFunc hndl)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttOnSubscribeHandlerFunc = hndl;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void unregisterOnSubscribeHandler()
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttOnSubscribeHandlerFunc = nullptr;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void registerOnDisconnectHandler(MqttOnDisconnectHandlerFunc hndl)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttOnDisconnectHandlerFunc = hndl;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void unregisterOnDisconnectHandler()
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_mqttOnDisconnectHandlerFunc = nullptr;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     //TODO obsolete subscribe() version
     void subscribe(const std::string& topic, int qos)
     {
-      TRC_FUNCTION_ENTER(PAR(topic));
+      TRC_FUNCTION_ENTER(PAR(this) << PAR(topic));
 
       if (nullptr == m_client) {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
@@ -418,7 +418,7 @@ namespace shape {
 
       auto onSubscribe = [&](const std::string& topic, int qos, bool result)
       {
-        TRC_INFORMATION("Subscribed result: " << PAR(topic) << PAR(result))
+        TRC_INFORMATION(PAR(this) << " Subscribed result: " << PAR(topic) << PAR(result))
         if (m_mqttOnSubscribeHandlerFunc) {
           m_mqttOnSubscribeHandlerFunc(topic, true);
         }
@@ -426,7 +426,7 @@ namespace shape {
 
       auto onMessage = [&](const std::string& topic, const std::string & message)
       {
-        TRC_DEBUG("==================================" << std::endl <<
+        TRC_DEBUG(PAR(this) << " ==================================" << std::endl <<
           "Received from MQTT: " << std::endl << MEM_HEX_CHAR(message.data(), message.size()));
 
         if (m_mqttMessageHandlerFunc) {
@@ -439,18 +439,20 @@ namespace shape {
 
       subscribe(topic, qos, onSubscribe, onMessage);
       
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void subscribe(const std::string& topic, int qos, MqttOnSubscribeQosHandlerFunc onSubscribe, MqttMessageStrHandlerFunc onMessage)
     {
-      TRC_FUNCTION_ENTER(PAR(topic));
+      TRC_FUNCTION_ENTER(PAR(this) << PAR(topic));
 
       if (nullptr == m_client) {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       MQTTAsync_responseOptions subs_opts = MQTTAsync_responseOptions_initializer;
 
@@ -464,22 +466,25 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, "MQTTAsync_subscribe() failed: " << PAR(retval) << PAR(topic) << PAR(qos));
       }
 
-      TRC_DEBUG(PAR(subs_opts.token))
+      TRC_DEBUG(PAR(this) << PAR(subs_opts.token))
       m_subscribeContextMap[subs_opts.token] = SubscribeContext(topic, qos, onSubscribe);
       m_onMessageHndlMap[topic] = onMessage;
 
-      TRC_FUNCTION_LEAVE("")
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void unsubscribe(const std::string& topic, MqttOnUnsubscribeHandlerFunc onUnsubscribe)
     {
-      TRC_FUNCTION_ENTER(PAR(topic));
+      TRC_FUNCTION_ENTER(PAR(this) << PAR(topic));
 
       if (nullptr == m_client) {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       m_onMessageHndlMap.erase(topic);
 
@@ -495,22 +500,23 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, "MQTTAsync_unsubscribe() failed: " << PAR(retval) << PAR(topic));
       }
 
-      TRC_DEBUG(PAR(subs_opts.token))
+      TRC_DEBUG(PAR(this) << PAR(subs_opts.token))
         m_unsubscribeContextMap[subs_opts.token] = UnsubscribeContext(topic, onUnsubscribe);
 
-      TRC_FUNCTION_LEAVE("")
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void publish(const std::string& topic, int qos, const std::vector<uint8_t> & msg)
     {
       auto onSend = [&](const std::string& topic, int qos, bool result)
       {
-        TRC_DEBUG("onSend: " << PAR(topic) << PAR(qos) << PAR(result));
+        TRC_DEBUG(PAR(this) << " onSend: " << PAR(topic) << PAR(qos) << PAR(result));
       };
 
       auto onDelivery = [&](const std::string& topic, int qos, bool result)
       {
-        TRC_DEBUG("onDelivery: " << PAR(topic) << PAR(qos) << PAR(result));
+        TRC_DEBUG(PAR(this) << " onDelivery: " << PAR(topic) << PAR(qos) << PAR(result));
       };
       
       publish(topic, qos, msg, onSend, onDelivery);
@@ -524,9 +530,9 @@ namespace shape {
     void publish(const std::string& topic, int qos, const std::vector<uint8_t> & msg
       , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
 
-      TRC_INFORMATION(PAR(topic) << PAR(qos));
+      TRC_INFORMATION(PAR(this) << PAR(topic) << PAR(qos));
 
       if (nullptr == m_client) {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)" << PAR(topic));
@@ -534,17 +540,17 @@ namespace shape {
 
       if (m_messageQueue->isSuspended()) {
         size_t bufferSize = m_messageQueue->size();
-        TRC_WARNING("Message queue is suspended as the connection is broken => msg will be buffered to be sent later " << PAR(bufferSize) << PAR(topic));
+        TRC_WARNING(PAR(this) << " Message queue is suspended as the connection is broken => msg will be buffered to be sent later " << PAR(bufferSize) << PAR(topic));
       }
 
       int retval = m_messageQueue->pushToQueue(PublishContext(topic, qos, msg, onSend, onDelivery));
       if (retval > m_bufferSize && m_buffered) {
         auto task = m_messageQueue->pop();
-        TRC_WARNING("Buffer overload => remove the oldest msg: " << std::endl <<
+        TRC_WARNING(PAR(this) << " Buffer overload => remove the oldest msg: " << std::endl <<
           NAME_PAR(topic, task.getTopic()) << std::endl <<
           std::string((char*)task.getMsg().data(), task.getMsg().size()));
       }
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     void publish(const std::string& topic, int qos, const std::string & msg
@@ -559,7 +565,7 @@ namespace shape {
 
     void connectThread()
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       //TODO verify paho autoconnect and reuse if applicable
       int retval;
       int seconds = m_mqttMinReconnect;
@@ -592,7 +598,7 @@ namespace shape {
           conn_opts.ssl = &ssl_opts;
         }
 
-        TRC_DEBUG("Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
+        TRC_DEBUG(PAR(this) << " Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
           << NAME_PAR(trustStore, (ssl_opts.trustStore ? ssl_opts.trustStore : ""))
           << NAME_PAR(keyStore, (ssl_opts.keyStore ? ssl_opts.keyStore : ""))
           << NAME_PAR(privateKey, (ssl_opts.privateKey ? ssl_opts.privateKey : ""))
@@ -602,20 +608,26 @@ namespace shape {
         if ((retval = MQTTAsync_connect(m_client, &conn_opts)) == MQTTASYNC_SUCCESS) {
         }
         else {
-          TRC_WARNING("MQTTAsync_connect() failed: " << PAR(retval));
+          TRC_WARNING(PAR(this) << " MQTTAsync_connect() failed: " << PAR(retval));
         }
 
         // wait for connection result
-        TRC_DEBUG("Going to sleep for: " << PAR(seconds));
+        TRC_DEBUG(PAR(this) << " Going to sleep for: " << PAR(seconds));
         {
+          TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
           std::unique_lock<std::mutex> lck(m_connectionMutex);
+          TRC_DEBUG(PAR(this) << "AQR-wait connectionMutex");
           if (m_connectionVariable.wait_for(lck, std::chrono::seconds(seconds),
-            [this] {return m_connected == true || m_stopAutoConnect == true; }))
+            [this] {return m_connected == true || m_stopAutoConnect == true; })) {
+
+            TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
             break;
+          }
+          TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
         }
         seconds = seconds < seconds_max ? seconds * 2 : seconds_max;
       }
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     //----------------------------
@@ -626,7 +638,7 @@ namespace shape {
     }
     void onConnect(MQTTAsync_successData* response)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       MQTTAsync_token token = 0;
       char* suri = nullptr;
       std::string serverUri;
@@ -641,7 +653,7 @@ namespace shape {
         sessionPresent = response->alt.connect.sessionPresent;
       }
 
-      TRC_INFORMATION("Connect succeded: " <<
+      TRC_INFORMATION(PAR(this) << " Connect succeded: " <<
         PAR(m_mqttBrokerAddr) <<
         PAR(m_mqttClientId) <<
         PAR(token) <<
@@ -651,19 +663,22 @@ namespace shape {
       );
 
       {
+        TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
         std::unique_lock<std::mutex> lck(m_connectionMutex);
+        TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
         m_connected = true;
         m_connectionVariable.notify_one();
+        TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
       }
 
       if (m_mqttOnConnectHandlerFunc) {
         m_mqttOnConnectHandlerFunc();
       }
 
-      TRC_WARNING("\n Message queue is recovered => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
+      TRC_WARNING(PAR(this) << "\n Message queue is recovered => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
       m_messageQueue->recover();
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     //----------------------------
@@ -674,17 +689,20 @@ namespace shape {
     }
     void onConnectFailure(MQTTAsync_failureData* response)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       if (response) {
-        TRC_WARNING("Connect failed: " << PAR(m_mqttClientId) << PAR(response->code) << NAME_PAR(errmsg, (response->message ? response->message : "-")));
+        TRC_WARNING(PAR(this) << " Connect failed: " << PAR(m_mqttClientId) << PAR(response->code) << NAME_PAR(errmsg, (response->message ? response->message : "-")));
       }
 
       {
+        TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
         std::unique_lock<std::mutex> lck(m_connectionMutex);
+        TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
         m_connected = false;
         m_connectionVariable.notify_one();
+        TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
       }
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     ///////////////////////
@@ -699,7 +717,7 @@ namespace shape {
     }
     void onSubscribe(MQTTAsync_successData* response)
     {
-      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : -1)) << NAME_PAR(qos, (response ? response->alt.qos : -1)));
+      TRC_FUNCTION_ENTER(PAR(this) << NAME_PAR(token, (response ? response->token : -1)) << NAME_PAR(qos, (response ? response->alt.qos : -1)));
 
       MQTTAsync_token token = 0;
       int qos = 0;
@@ -709,7 +727,9 @@ namespace shape {
         qos = response->alt.qos;
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       //based on newer subscribe() version
       auto found = m_subscribeContextMap.find(token);
@@ -719,10 +739,11 @@ namespace shape {
         m_subscribeContextMap.erase(found);
       }
       else {
-        TRC_WARNING("Missing onSubscribe handler: " << PAR(token));
+        TRC_WARNING(PAR(this) << " Missing onSubscribe handler: " << PAR(token));
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     //------------------------
@@ -732,7 +753,7 @@ namespace shape {
     }
     void onSubscribeFailure(MQTTAsync_failureData* response)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
 
       MQTTAsync_token token = 0;
       int code = 0;
@@ -744,7 +765,7 @@ namespace shape {
         message = response->message ? response->message : "";
       }
 
-      TRC_WARNING("Subscribe failed: " <<
+      TRC_WARNING(PAR(this) << " Subscribe failed: " <<
         PAR(token) <<
         PAR(code) <<
         PAR(message)
@@ -758,10 +779,10 @@ namespace shape {
         m_subscribeContextMap.erase(found);
       }
       else {
-        TRC_WARNING("Missing onSubscribe handler: " << PAR(token));
+        TRC_WARNING(PAR(this) << " Missing onSubscribe handler: " << PAR(token));
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     ///////////////////////
@@ -776,7 +797,7 @@ namespace shape {
     }
     void onUnsubscribe(MQTTAsync_successData* response)
     {
-      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : -1)));
+      TRC_FUNCTION_ENTER(PAR(this) << NAME_PAR(token, (response ? response->token : -1)));
 
       MQTTAsync_token token = 0;
 
@@ -784,7 +805,9 @@ namespace shape {
         token = response->token;
       }
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       //based on newer subscribe() version
       auto found = m_unsubscribeContextMap.find(token);
@@ -794,10 +817,11 @@ namespace shape {
         m_unsubscribeContextMap.erase(found);
       }
       else {
-        TRC_WARNING("Missing onUnsubscribe handler: " << PAR(token));
+        TRC_WARNING(PAR(this) << " Missing onUnsubscribe handler: " << PAR(token));
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     //------------------------
@@ -807,7 +831,7 @@ namespace shape {
     }
     void onUnsubscribeFailure(MQTTAsync_failureData* response)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
 
       MQTTAsync_token token = 0;
       int code = 0;
@@ -819,7 +843,7 @@ namespace shape {
         message = response->message ? response->message : "";
       }
 
-      TRC_WARNING("Unsubscribe failed: " <<
+      TRC_WARNING(PAR(this) << " Unsubscribe failed: " <<
         PAR(token) <<
         PAR(code) <<
         PAR(message)
@@ -833,10 +857,10 @@ namespace shape {
         m_unsubscribeContextMap.erase(found);
       }
       else {
-        TRC_WARNING("Missing onUnsubscribe handler: " << PAR(token));
+        TRC_WARNING(PAR(this) << " Missing onUnsubscribe handler: " << PAR(token));
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     ///////////////////////
@@ -858,7 +882,9 @@ namespace shape {
       pubmsg.qos = pc.getQos();
       pubmsg.retained = 0;
 
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       MQTTAsync_responseOptions send_opts = MQTTAsync_responseOptions_initializer;
       // init send options
@@ -869,19 +895,20 @@ namespace shape {
       if ((retval = MQTTAsync_sendMessage(m_client, pc.getTopic().c_str(), &pubmsg, &send_opts)) == MQTTASYNC_SUCCESS) {
         bretval = true;
       
-        TRC_INFORMATION(NAME_PAR(token, send_opts.token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
+        TRC_INFORMATION(PAR(this) << NAME_PAR(token, send_opts.token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
           << NAME_PAR(publishContextMap.size, m_publishContextMap.size()));
         m_publishContextMap[send_opts.token] = pc;
       }
       else {
-        TRC_WARNING("Failed to start sendMessage: " << PAR(retval) << " => Message queue is suspended");
+        TRC_WARNING(PAR(this) << " Failed to start sendMessage: " << PAR(retval) << " => Message queue is suspended");
         m_messageQueue->suspend();
         if (!m_buffered) {
           bretval = true; // => pop anyway from queue
         }
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
+      TRC_FUNCTION_LEAVE(PAR(this));
       return bretval;
     }
 
@@ -893,10 +920,12 @@ namespace shape {
     }
     void onSend(MQTTAsync_successData* response)
     {
-      TRC_DEBUG("Message sent successfuly: " << NAME_PAR(token, (response ? response->token : 0)));
+      TRC_DEBUG(PAR(this) << " Message sent successfuly: " << NAME_PAR(token, (response ? response->token : 0)));
       
       if (response) {
+        TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
         std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+        TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
         /** For publish, the message being sent to the server. */
         //struct
@@ -908,15 +937,16 @@ namespace shape {
         auto found = m_publishContextMap.find(response->token);
         if (found != m_publishContextMap.end()) {
           auto & pc = found->second;
-          TRC_INFORMATION(NAME_PAR(token, response->token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
+          TRC_INFORMATION(PAR(this) << NAME_PAR(token, response->token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
           pc.onSend(pc.getQos(), true, response->token);
           //if (pc.getQos() == 0) {
             m_publishContextMap.erase(found);
           //}
         }
         else {
-          TRC_WARNING("Missing publishContext: " << PAR(response->token));
+          TRC_WARNING(PAR(this) << " Missing publishContext: " << PAR(response->token));
         }
+        TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
       }
     }
 
@@ -928,7 +958,7 @@ namespace shape {
     }
     void onSendFailure(MQTTAsync_failureData* response)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
 
       MQTTAsync_token token = 0;
       int code = 0;
@@ -940,7 +970,7 @@ namespace shape {
         message = response->message ? response->message : "";
       }
 
-      TRC_WARNING("Send failed: " <<
+      TRC_WARNING(PAR(this) << " Send failed: " <<
         PAR(token) <<
         PAR(code) <<
         PAR(message)
@@ -949,18 +979,18 @@ namespace shape {
       auto found = m_publishContextMap.find(token);
       if (found != m_publishContextMap.end()) {
         auto & pc = found->second;
-        TRC_WARNING(PAR(token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
+        TRC_WARNING(PAR(this) << PAR(token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
         pc.onSend(pc.getQos(), false, token);
         m_publishContextMap.erase(found);
       }
       else {
-        TRC_WARNING("Missing publishContext: " << PAR(token));
+        TRC_WARNING(PAR(this) << " Missing publishContext: " << PAR(token));
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
       
       
-      TRC_WARNING("Message sent failure: " << PAR(response->code) << " => Message queue is suspended");
+      TRC_WARNING(PAR(this) << " Message sent failure: " << PAR(response->code) << " => Message queue is suspended");
       m_messageQueue->suspend();
     }
 
@@ -976,13 +1006,13 @@ namespace shape {
     }
     void onDisconnect(MQTTAsync_successData* response)
     {
-      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : 0)));
+      TRC_FUNCTION_ENTER(PAR(this) << NAME_PAR(token, (response ? response->token : 0)));
       m_disconnect_promise_uptr->set_value(true);
 
       if (m_mqttOnDisconnectHandlerFunc) {
         m_mqttOnDisconnectHandlerFunc();
       }
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     //------------------------
@@ -991,10 +1021,10 @@ namespace shape {
       ((MqttService::Imp*)context)->onDisconnectFailure(response);
     }
     void onDisconnectFailure(MQTTAsync_failureData* response) {
-      TRC_FUNCTION_ENTER(NAME_PAR(token, (response ? response->token : 0)));
+      TRC_FUNCTION_ENTER(PAR(this) << NAME_PAR(token, (response ? response->token : 0)));
       m_disconnect_promise_uptr->set_value(false);
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     /////////////////////
@@ -1014,14 +1044,14 @@ namespace shape {
       auto found = m_publishContextMap.find(token);
       if (found != m_publishContextMap.end()) {
         auto & pc = found->second;
-        TRC_INFORMATION(PAR(token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
+        TRC_INFORMATION(PAR(this) << PAR(token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
         pc.onDelivery(pc.getQos(), true, token);
       }
       else {
-        TRC_WARNING("Missing publishContext: " << PAR(token));
+        TRC_WARNING(PAR(this) << " Missing publishContext: " << PAR(token));
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     //------------------------
@@ -1032,7 +1062,7 @@ namespace shape {
     }
     int msgarrvd(char *topicName, int topicLen, MQTTAsync_message *message)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       ustring msg((unsigned char*)message->payload, message->payloadlen);
       std::string topic;
       if (topicLen > 0)
@@ -1043,7 +1073,7 @@ namespace shape {
       MQTTAsync_freeMessage(&message);
       MQTTAsync_free(topicName);
       
-      TRC_DEBUG(PAR(topic));
+      TRC_DEBUG(PAR(this) << PAR(topic));
       bool handled = false;
 
       for (auto it : m_onMessageHndlMap) {
@@ -1091,10 +1121,10 @@ namespace shape {
       }
 
       if (!handled) {
-        TRC_WARNING("no handler for: " << PAR(topic))
+        TRC_WARNING(PAR(this) << " no handler for: " << PAR(topic))
       }
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
       return 1;
     }
 
@@ -1105,11 +1135,11 @@ namespace shape {
       ((MqttService::Imp*)context)->connlost(cause);
     }
     void connlost(char *cause) {
-      TRC_FUNCTION_ENTER("");
-      TRC_WARNING("Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")) << " => Message queue is suspended");
+      TRC_FUNCTION_ENTER(PAR(this));
+      TRC_WARNING(PAR(this) << " Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")) << " => Message queue is suspended");
       m_messageQueue->suspend();
       connect();
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     /////////////////////
@@ -1118,8 +1148,8 @@ namespace shape {
 
     void activate(const shape::Properties *props)
     {
-      TRC_FUNCTION_ENTER("");
-      TRC_INFORMATION(std::endl <<
+      TRC_FUNCTION_ENTER(PAR(this));
+      TRC_INFORMATION(PAR(this) << std::endl <<
         "******************************" << std::endl <<
         "MqttService instance activate" << std::endl <<
         "******************************"
@@ -1131,13 +1161,13 @@ namespace shape {
         return publishFromQueue(pc);
       });
 
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void deactivate()
     {
-      TRC_FUNCTION_ENTER("");
-      TRC_INFORMATION(std::endl <<
+      TRC_FUNCTION_ENTER(PAR(this));
+      TRC_INFORMATION(PAR(this) << std::endl <<
         "******************************" << std::endl <<
         "MqttService instance deactivate" << std::endl <<
         "******************************"
@@ -1150,12 +1180,12 @@ namespace shape {
 
       delete m_messageQueue;
 
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void modify(const shape::Properties *props)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
 
       props->getMemberAsString("BrokerAddr", m_mqttBrokerAddr);
       props->getMemberAsInt("Persistence", m_mqttPersistence);
@@ -1184,39 +1214,39 @@ namespace shape {
       m_keyStore = m_keyStore.empty() ? "" : dataDir + "/cert/" + m_keyStore;
       m_privateKey = m_privateKey.empty() ? "" : dataDir + "/cert/" + m_privateKey;
 
-      TRC_FUNCTION_LEAVE("");
+      TRC_FUNCTION_LEAVE(PAR(this));
     }
 
     void attachInterface(shape::IBufferService* iface)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_iBufferService = iface;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void detachInterface(shape::IBufferService* iface)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       if (m_iBufferService == iface) {
         m_iBufferService = nullptr;
       }
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void attachInterface(shape::ILaunchService* iface)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       m_iLaunchService = iface;
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void detachInterface(shape::ILaunchService* iface)
     {
-      TRC_FUNCTION_ENTER("");
+      TRC_FUNCTION_ENTER(PAR(this));
       if (m_iLaunchService == iface) {
         m_iLaunchService = nullptr;
       }
-      TRC_FUNCTION_LEAVE("")
+      TRC_FUNCTION_LEAVE(PAR(this))
     }
   };
 
@@ -1226,16 +1256,16 @@ namespace shape {
 
   MqttService::MqttService()
   {
-    TRC_FUNCTION_ENTER("");
+    TRC_FUNCTION_ENTER(PAR(this));
     m_impl = shape_new MqttService::Imp();
-    TRC_FUNCTION_LEAVE("")
+    TRC_FUNCTION_LEAVE(PAR(this))
   }
 
   MqttService::~MqttService()
   {
-    TRC_FUNCTION_ENTER("");
+    TRC_FUNCTION_ENTER(PAR(this));
     delete m_impl;
-    TRC_FUNCTION_LEAVE("")
+    TRC_FUNCTION_LEAVE(PAR(this))
   }
 
   void MqttService::create(const std::string& clientId, const ConnectionPars& cp)
