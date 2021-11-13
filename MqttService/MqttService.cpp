@@ -160,7 +160,7 @@ namespace shape {
     MqttOnSubscribeHandlerFunc m_mqttOnSubscribeHandlerFunc;
     MqttOnDisconnectHandlerFunc m_mqttOnDisconnectHandlerFunc;
 
-    std::mutex m_hndlMutex; //protects handlers maps
+    //std::mutex m_hndlMutex; //protects handlers maps
 
     // map of [token, subscribeContext] used to invoke onSubscribe according token in asyc result
     std::map<MQTTAsync_token, SubscribeContext> m_subscribeContextMap;
@@ -451,7 +451,8 @@ namespace shape {
       }
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
-      std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
+      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       MQTTAsync_responseOptions subs_opts = MQTTAsync_responseOptions_initializer;
@@ -483,7 +484,8 @@ namespace shape {
       }
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
-      std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
+      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       m_onMessageHndlMap.erase(topic);
@@ -728,7 +730,8 @@ namespace shape {
       }
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
-      std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
+      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       //based on newer subscribe() version
@@ -806,7 +809,8 @@ namespace shape {
       }
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
-      std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
+      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       //based on newer subscribe() version
@@ -883,7 +887,8 @@ namespace shape {
       pubmsg.retained = 0;
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
-      std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+      std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
+      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       MQTTAsync_responseOptions send_opts = MQTTAsync_responseOptions_initializer;
@@ -924,7 +929,8 @@ namespace shape {
       
       if (response) {
         TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
-        std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
+        std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
+        //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
         TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
         /** For publish, the message being sent to the server. */
