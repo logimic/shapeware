@@ -48,21 +48,20 @@ namespace shape {
   {
 
   private:
-    shape::IBufferService* m_iBufferService = nullptr; // not used now
     shape::ILaunchService* m_iLaunchService = nullptr;
 
     //configuration
     std::string m_mqttBrokerAddr;
     std::string m_mqttClientId;
     int m_mqttPersistence = 0;
-    //int m_mqttQos = 0;
     std::string m_mqttUser;
     std::string m_mqttPassword;
     bool m_mqttEnabledSSL = false;
     int m_mqttKeepAliveInterval = 20; //special msg sent to keep connection alive
     int m_mqttConnectTimeout = 5; //waits for accept from broker side
     int m_mqttMinReconnect = 1; //waits to reconnect when connection broken
-    int m_mqttMaxReconnect = 64; //waits time *= 2 with every unsuccessful attempt up to this value 
+    int m_mqttMaxReconnect = 64; //waits time *= 2 with every unsuccessful attempt up to this value
+    int m_seconds = m_mqttMinReconnect;
     bool m_buffered = false;
     int m_bufferSize = 1024;
 
@@ -160,8 +159,6 @@ namespace shape {
     MqttOnSubscribeHandlerFunc m_mqttOnSubscribeHandlerFunc;
     MqttOnDisconnectHandlerFunc m_mqttOnDisconnectHandlerFunc;
 
-    //std::mutex m_hndlMutex; //protects handlers maps
-
     // map of [token, subscribeContext] used to invoke onSubscribe according token in asyc result
     std::map<MQTTAsync_token, SubscribeContext> m_subscribeContextMap;
 
@@ -176,17 +173,8 @@ namespace shape {
 
     MQTTAsync m_client = nullptr;
 
-    std::atomic_bool m_stopAutoConnect;
-    std::atomic_bool m_connected;
-
     std::thread m_connectThread;
-
-    //MQTTAsync_createOptions m_create_opts = MQTTAsync_createOptions_initializer;
-    //MQTTAsync_connectOptions m_conn_opts = MQTTAsync_connectOptions_initializer;
-    //MQTTAsync_SSLOptions m_ssl_opts = MQTTAsync_SSLOptions_initializer;
-    //MQTTAsync_disconnectOptions m_disc_opts = MQTTAsync_disconnectOptions_initializer;
-    //MQTTAsync_responseOptions m_subs_opts = MQTTAsync_responseOptions_initializer;
-    //MQTTAsync_responseOptions m_send_opts = MQTTAsync_responseOptions_initializer;
+    bool m_runConnectThread = true;
 
     std::mutex m_connectionMutex;
     std::condition_variable m_connectionVariable;
@@ -197,9 +185,7 @@ namespace shape {
     //------------------------
     Imp()
       : m_messageQueue(nullptr)
-    {
-      m_connected = false;
-    }
+    {}
 
     //------------------------
     ~Imp()
@@ -268,8 +254,8 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
-      m_stopAutoConnect = false;
-      m_connected = false;
+      m_runConnectThread = true;
+      m_connectionVariable.notify_all();
 
       if (m_connectThread.joinable())
         m_connectThread.join();
@@ -296,14 +282,16 @@ namespace shape {
       m_disconnect_promise_uptr.reset(shape_new std::promise<bool>());
       std::future<bool> disconnect_future = m_disconnect_promise_uptr->get_future();
 
-      ///stop possibly running connect thread
-      m_stopAutoConnect = true;
+      ///stop connect thread
+      m_runConnectThread = false;
+      m_connectionVariable.notify_all();
+
       onConnectFailure(nullptr);
       if (m_connectThread.joinable())
         m_connectThread.join();
 
-      TRC_WARNING(PAR(this) << PAR(m_mqttClientId) << " Disconnect: => Message queue is suspended ");
-      m_messageQueue->suspend();
+      TRC_WARNING(PAR(this) << PAR(m_mqttClientId) << " Disconnect: => Message queue will be stopped ");
+      m_messageQueue->stopQueue();
 
       // init disconnect options
       MQTTAsync_disconnectOptions disc_opts = MQTTAsync_disconnectOptions_initializer;
@@ -334,7 +322,11 @@ namespace shape {
 
     bool isReady() const
     {
-      return m_connected;
+      if (nullptr == m_client) {
+        TRC_WARNING(PAR(this) << " Client was not created at all");
+        return false;
+      }
+      return MQTTAsync_isConnected(m_client);
     }
 
     void registerMessageHandler(MqttMessageHandlerFunc hndl)
@@ -452,7 +444,6 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
-      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       MQTTAsync_responseOptions subs_opts = MQTTAsync_responseOptions_initializer;
@@ -485,7 +476,6 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
-      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       m_onMessageHndlMap.erase(topic);
@@ -540,11 +530,6 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)" << PAR(topic));
       }
 
-      if (m_messageQueue->isSuspended()) {
-        size_t bufferSize = m_messageQueue->size();
-        TRC_WARNING(PAR(this) << " Message queue is suspended as the connection is broken => msg will be buffered to be sent later " << PAR(bufferSize) << PAR(topic));
-      }
-
       int retval = m_messageQueue->pushToQueue(PublishContext(topic, qos, msg, onSend, onDelivery));
       if (retval > m_bufferSize && m_buffered) {
         auto task = m_messageQueue->pop();
@@ -568,66 +553,68 @@ namespace shape {
     void connectThread()
     {
       TRC_FUNCTION_ENTER(PAR(this));
-      //TODO verify paho autoconnect and reuse if applicable
+      //TODO verify paho autoconnect and reuse if applicable - does not work now
       int retval;
-      int seconds = m_mqttMinReconnect;
-      int seconds_max = m_mqttMaxReconnect;
+      static int wait_cnt = 0;
 
+      while (m_runConnectThread) {
+        if (!MQTTAsync_isConnected(m_client)) {
+          // init connection options
+          MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
+          MQTTAsync_SSLOptions ssl_opts = MQTTAsync_SSLOptions_initializer;
 
-      while (true) {
-        // init connection options
-        MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
-        MQTTAsync_SSLOptions ssl_opts = MQTTAsync_SSLOptions_initializer;
+          conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
+          conn_opts.cleansession = 1;
+          conn_opts.connectTimeout = m_mqttConnectTimeout;
+          conn_opts.username = m_mqttUser.c_str();
+          conn_opts.password = m_mqttPassword.c_str();
+          conn_opts.onSuccess = s_onConnect;
+          conn_opts.onFailure = s_onConnectFailure;
+          conn_opts.context = this;
+          conn_opts.automaticReconnect = 0; //1 doesn't work with aws
 
-        conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
-        conn_opts.cleansession = 1;
-        conn_opts.connectTimeout = m_mqttConnectTimeout;
-        conn_opts.username = m_mqttUser.c_str();
-        conn_opts.password = m_mqttPassword.c_str();
-        conn_opts.onSuccess = s_onConnect;
-        conn_opts.onFailure = s_onConnectFailure;
-        conn_opts.context = this;
+          // init ssl options if required
+          if (m_mqttEnabledSSL) {
+            ssl_opts.enableServerCertAuth = true;
+            if (!m_trustStore.empty()) ssl_opts.trustStore = m_trustStore.c_str();
+            if (!m_keyStore.empty()) ssl_opts.keyStore = m_keyStore.c_str();
+            if (!m_privateKey.empty()) ssl_opts.privateKey = m_privateKey.c_str();
+            if (!m_privateKeyPassword.empty()) ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
+            if (!m_enabledCipherSuites.empty()) ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
+            ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
+            conn_opts.ssl = &ssl_opts;
+          }
 
-        // init ssl options if required
-        if (m_mqttEnabledSSL) {
-          ssl_opts.enableServerCertAuth = true;
-          if (!m_trustStore.empty()) ssl_opts.trustStore = m_trustStore.c_str();
-          if (!m_keyStore.empty()) ssl_opts.keyStore = m_keyStore.c_str();
-          if (!m_privateKey.empty()) ssl_opts.privateKey = m_privateKey.c_str();
-          if (!m_privateKeyPassword.empty()) ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
-          if (!m_enabledCipherSuites.empty()) ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
-          ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
-          conn_opts.ssl = &ssl_opts;
-        }
+          TRC_DEBUG(PAR(this) << " Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
+            << NAME_PAR(trustStore, (ssl_opts.trustStore ? ssl_opts.trustStore : ""))
+            << NAME_PAR(keyStore, (ssl_opts.keyStore ? ssl_opts.keyStore : ""))
+            << NAME_PAR(privateKey, (ssl_opts.privateKey ? ssl_opts.privateKey : ""))
+            << NAME_PAR(enableServerCertAuth, ssl_opts.enableServerCertAuth)
+          );
 
-        TRC_DEBUG(PAR(this) << " Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
-          << NAME_PAR(trustStore, (ssl_opts.trustStore ? ssl_opts.trustStore : ""))
-          << NAME_PAR(keyStore, (ssl_opts.keyStore ? ssl_opts.keyStore : ""))
-          << NAME_PAR(privateKey, (ssl_opts.privateKey ? ssl_opts.privateKey : ""))
-          << NAME_PAR(enableServerCertAuth, ssl_opts.enableServerCertAuth)
-        );
+          if ((retval = MQTTAsync_connect(m_client, &conn_opts)) == MQTTASYNC_SUCCESS) {
+          }
+          else {
+            TRC_WARNING(PAR(this) << " MQTTAsync_connect() failed: " << PAR(retval));
+          }
 
-        if ((retval = MQTTAsync_connect(m_client, &conn_opts)) == MQTTASYNC_SUCCESS) {
+          m_seconds = m_seconds < m_mqttMaxReconnect ? m_seconds * 2 : m_mqttMaxReconnect;
+          TRC_DEBUG(PAR(this) << " Going to sleep for: " << PAR(m_seconds));
         }
         else {
-          TRC_WARNING(PAR(this) << " MQTTAsync_connect() failed: " << PAR(retval));
+          m_seconds = m_mqttMaxReconnect;
         }
 
         // wait for connection result
-        TRC_DEBUG(PAR(this) << " Going to sleep for: " << PAR(seconds));
         {
           TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
           std::unique_lock<std::mutex> lck(m_connectionMutex);
-          TRC_DEBUG(PAR(this) << "AQR-wait connectionMutex");
-          if (m_connectionVariable.wait_for(lck, std::chrono::seconds(seconds),
-            [this] {return m_connected == true || m_stopAutoConnect == true; })) {
-
-            TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
-            break;
-          }
-          TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
+          TRC_DEBUG(PAR(this) << "AQR-wait connectionMutex - waiting cnt: " << ++wait_cnt);
+          m_connectionVariable.wait_for(lck, std::chrono::seconds(m_seconds),
+            [this] {return !m_runConnectThread; });
+          TRC_DEBUG(PAR(this) << "ULCK-connectionMutex: " << "out of waiting cnt: " << ++wait_cnt);
         }
-        seconds = seconds < seconds_max ? seconds * 2 : seconds_max;
+
       }
       TRC_FUNCTION_LEAVE(PAR(this));
     }
@@ -664,21 +651,20 @@ namespace shape {
         PAR(sessionPresent)
       );
 
-      {
-        TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
-        std::unique_lock<std::mutex> lck(m_connectionMutex);
-        TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
-        m_connected = true;
-        m_connectionVariable.notify_one();
-        TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
-      }
+      //{
+      //  TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
+      //  std::unique_lock<std::mutex> lck(m_connectionMutex);
+      //  TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
+      //  m_connectionVariable.notify_one();
+      //  TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
+      //}
+      m_connectionVariable.notify_all();
 
       if (m_mqttOnConnectHandlerFunc) {
         m_mqttOnConnectHandlerFunc();
       }
 
-      TRC_WARNING(PAR(this) << "\n Message queue is recovered => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
-      m_messageQueue->recover();
+      TRC_WARNING(PAR(this) << "\n Message queue => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
 
       TRC_FUNCTION_LEAVE(PAR(this));
     }
@@ -695,13 +681,14 @@ namespace shape {
       if (response) {
         TRC_WARNING(PAR(this) << " Connect failed: " << PAR(m_mqttClientId) << PAR(response->code) << NAME_PAR(errmsg, (response->message ? response->message : "-")));
       }
-
+      else {
+        TRC_WARNING(PAR(this) << " Connect failed: " << PAR(m_mqttClientId) << " missing more info");
+      }
       {
         TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
         std::unique_lock<std::mutex> lck(m_connectionMutex);
         TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
-        m_connected = false;
-        m_connectionVariable.notify_one();
+        m_connectionVariable.notify_all();
         TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
       }
       TRC_FUNCTION_LEAVE(PAR(this));
@@ -731,7 +718,6 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
-      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       //based on newer subscribe() version
@@ -810,7 +796,6 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
-      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       //based on newer subscribe() version
@@ -888,7 +873,6 @@ namespace shape {
 
       TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
       std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
-      //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
       TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
 
       MQTTAsync_responseOptions send_opts = MQTTAsync_responseOptions_initializer;
@@ -896,6 +880,7 @@ namespace shape {
       send_opts.onSuccess = s_onSend;
       send_opts.onFailure = s_onSendFailure;
       send_opts.context = this;
+      send_opts.token = -1;
 
       if ((retval = MQTTAsync_sendMessage(m_client, pc.getTopic().c_str(), &pubmsg, &send_opts)) == MQTTASYNC_SUCCESS) {
         bretval = true;
@@ -905,8 +890,7 @@ namespace shape {
         m_publishContextMap[send_opts.token] = pc;
       }
       else {
-        TRC_WARNING(PAR(this) << " Failed to start sendMessage: " << PAR(retval) << " => Message queue is suspended");
-        m_messageQueue->suspend();
+        TRC_WARNING(PAR(this) << " Failed to start sendMessage: " << PAR(retval));
         if (!m_buffered) {
           bretval = true; // => pop anyway from queue
         }
@@ -930,15 +914,7 @@ namespace shape {
       if (response) {
         TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
         std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
-        //std::lock_guard<std::mutex> lck(m_hndlMutex); //protects handlers maps
         TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
-
-        /** For publish, the message being sent to the server. */
-        //struct
-        //{
-        //  MQTTAsync_message message;
-        //  char* destinationName;
-        //} pub;
 
         auto found = m_publishContextMap.find(response->token);
         if (found != m_publishContextMap.end()) {
@@ -996,8 +972,7 @@ namespace shape {
       TRC_FUNCTION_LEAVE(PAR(this));
       
       
-      TRC_WARNING(PAR(this) << " Message sent failure: " << PAR(response->code) << " => Message queue is suspended");
-      m_messageQueue->suspend();
+      TRC_WARNING(PAR(this) << " Message sent failure: " << PAR(response->code));
     }
 
     ///////////////////////
@@ -1142,9 +1117,9 @@ namespace shape {
     }
     void connlost(char *cause) {
       TRC_FUNCTION_ENTER(PAR(this));
-      TRC_WARNING(PAR(this) << " Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")) << " => Message queue is suspended");
-      m_messageQueue->suspend();
-      connect();
+      TRC_WARNING(PAR(this) << " Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")) << " wait for automatic reconnect");
+      m_seconds = m_mqttMinReconnect;
+      m_connectionVariable.notify_all();
       TRC_FUNCTION_LEAVE(PAR(this));
     }
 
@@ -1195,7 +1170,6 @@ namespace shape {
 
       props->getMemberAsString("BrokerAddr", m_mqttBrokerAddr);
       props->getMemberAsInt("Persistence", m_mqttPersistence);
-      //props->getMemberAsInt("Qos", m_mqttQos);
       props->getMemberAsString("User", m_mqttUser);
       props->getMemberAsString("Password", m_mqttPassword);
       props->getMemberAsBool("EnabledSSL", m_mqttEnabledSSL);
@@ -1221,22 +1195,6 @@ namespace shape {
       m_privateKey = m_privateKey.empty() ? "" : dataDir + "/cert/" + m_privateKey;
 
       TRC_FUNCTION_LEAVE(PAR(this));
-    }
-
-    void attachInterface(shape::IBufferService* iface)
-    {
-      TRC_FUNCTION_ENTER(PAR(this));
-      m_iBufferService = iface;
-      TRC_FUNCTION_LEAVE(PAR(this))
-    }
-
-    void detachInterface(shape::IBufferService* iface)
-    {
-      TRC_FUNCTION_ENTER(PAR(this));
-      if (m_iBufferService == iface) {
-        m_iBufferService = nullptr;
-      }
-      TRC_FUNCTION_LEAVE(PAR(this))
     }
 
     void attachInterface(shape::ILaunchService* iface)
@@ -1410,16 +1368,6 @@ namespace shape {
   void MqttService::modify(const shape::Properties *props)
   {
     m_impl->modify(props);
-  }
-
-  void MqttService::attachInterface(IBufferService* iface)
-  {
-    m_impl->attachInterface(iface);
-  }
-
-  void MqttService::detachInterface(IBufferService* iface)
-  {
-    m_impl->detachInterface(iface);
   }
 
   void MqttService::attachInterface(shape::ILaunchService* iface)

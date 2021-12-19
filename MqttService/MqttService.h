@@ -19,7 +19,6 @@
 #include "IMqttService.h"
 #include "ShapeProperties.h"
 #include "ILaunchService.h"
-#include "IBufferService.h"
 #include "ITraceService.h"
 #include <string>
 
@@ -68,9 +67,6 @@ namespace shape {
     void activate(const shape::Properties *props = 0);
     void deactivate();
     void modify(const shape::Properties *props);
-
-    void attachInterface(shape::IBufferService* iface);
-    void detachInterface(shape::IBufferService* iface);
 
     void attachInterface(shape::ILaunchService* iface);
     void detachInterface(shape::ILaunchService* iface);
