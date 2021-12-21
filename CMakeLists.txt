@@ -107,6 +107,10 @@ add_subdirectory(CommandService)
 add_subdirectory(CommandLineService)
 add_subdirectory(startup)
 
+if(${BUILD_SYSLOG})
+  add_subdirectory(SyslogLogger)
+endif()
+
 if(${BUILD_ZEROMQ})
   add_subdirectory(ZeroMqService)
 endif()
