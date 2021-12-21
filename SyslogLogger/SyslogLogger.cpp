@@ -1,3 +1,7 @@
+/*
+ *  Based on SyslogLogger component implemented by IQRF: https://gitlab.iqrf.org/open-source/iqrf-gateway-daemon.git
+*/
+
 /**
  * Copyright 2015-2021 IQRF Tech s.r.o.
  * Copyright 2019-2021 MICRORISC s.r.o.
@@ -28,11 +32,11 @@
 #include <sys/types.h>
 #include <syslog.h>
 
-#include "iqrf__SyslogLogger.hxx"
+#include "shape__SyslogLogger.hxx"
 
-TRC_INIT_MODULE(iqrf::SyslogLogger);
+TRC_INIT_MODULE(shape::SyslogLogger);
 
-namespace iqrf {
+namespace shape {
 
 	class SyslogLogger::Imp {
 	private:

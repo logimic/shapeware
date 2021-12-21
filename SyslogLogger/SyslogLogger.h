@@ -1,3 +1,7 @@
+/*
+ *  Based on SyslogLogger component implemented by IQRF: https://gitlab.iqrf.org/open-source/iqrf-gateway-daemon.git
+*/
+
 /**
  * Copyright 2015-2021 IQRF Tech s.r.o.
  * Copyright 2019-2021 MICRORISC s.r.o.
@@ -20,9 +24,7 @@
 #include "ShapeProperties.h"
 #include <string>
 
-using namespace shape;
-
-namespace iqrf {
+namespace shape {
 
 	class SyslogLogger : public ITraceService {
 	public:

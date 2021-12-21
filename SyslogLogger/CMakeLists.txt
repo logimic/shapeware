@@ -1,3 +1,5 @@
+#Based on SyslogLogger component implemented by IQRF: https://gitlab.iqrf.org/open-source/iqrf-gateway-daemon.git
+
 # Copyright 2015-2021 IQRF Tech s.r.o.
 # Copyright 2019-2021 MICRORISC s.r.o.
 #
@@ -15,7 +17,7 @@
 
 project(SyslogLogger)
 
-set(COMPONENT iqrf::SyslogLogger)
+set(COMPONENT shape::SyslogLogger)
 DeclareShapeComponent(${COMPONENT})
 AddShapeProvidedInterface(${COMPONENT} shape::ITraceService)
 ConfigureShapeComponent(${COMPONENT} COMPONENT_HXX)
