@@ -215,7 +215,6 @@ namespace shape {
       
       create_opts.sendWhileDisconnected = m_buffered ? 1 : 0;
       create_opts.maxBufferedMessages = m_bufferSize;
-      create_opts.deleteOldestMessages = 1;
 
       if (!cp.brokerAddress.empty()) m_mqttBrokerAddr = cp.brokerAddress;
       if (!cp.trustStore.empty()) m_trustStore = cp.trustStore;
