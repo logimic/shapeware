@@ -20,6 +20,10 @@
 #include "mqtt_utils.h"
 #include "TaskQueue2.h"
 #include "MQTTAsync.h"
+
+#include "JsonMacro.h"
+#include "rapidjson/pointer.h"
+
 #include <set>
 #include <atomic>
 #include <future>
@@ -62,8 +66,8 @@ namespace shape {
     int m_mqttMinReconnect = 1; //waits to reconnect when connection broken
     int m_mqttMaxReconnect = 64; //waits time *= 2 with every unsuccessful attempt up to this value
     int m_seconds = m_mqttMinReconnect;
-    bool m_buffered = false;
-    int m_bufferSize = 1024;
+    bool m_buffered = false; //Whether to allow messages to be sent when the client library is not connected
+    int m_bufferSize = 1024; //The maximum number of messages allowed to be buffered while not connected
 
     //The file in PEM format containing the public digital certificates trusted by the client.
     std::string m_trustStore;
@@ -152,7 +156,7 @@ namespace shape {
       MqttOnDeliveryHandlerFunc m_onDeliveryHndl;
     };
 
-    TaskQueue<PublishContext> * m_messageQueue = nullptr;
+    //TaskQueue<PublishContext> * m_messageQueue = nullptr;
     MqttMessageHandlerFunc m_mqttMessageHandlerFunc;
     MqttMessageStrHandlerFunc m_mqttMessageStrHandlerFunc;
     MqttOnConnectHandlerFunc m_mqttOnConnectHandlerFunc;
@@ -184,7 +188,7 @@ namespace shape {
   public:
     //------------------------
     Imp()
-      : m_messageQueue(nullptr)
+    //  : m_messageQueue(nullptr)
     {}
 
     //------------------------
@@ -208,7 +212,10 @@ namespace shape {
 
       // init connection options
       MQTTAsync_createOptions create_opts = MQTTAsync_createOptions_initializer;
-      create_opts.sendWhileDisconnected = 1;
+      
+      create_opts.sendWhileDisconnected = m_buffered ? 1 : 0;
+      create_opts.maxBufferedMessages = m_bufferSize;
+      create_opts.deleteOldestMessages = 1;
 
       if (!cp.brokerAddress.empty()) m_mqttBrokerAddr = cp.brokerAddress;
       if (!cp.trustStore.empty()) m_trustStore = cp.trustStore;
@@ -291,7 +298,7 @@ namespace shape {
         m_connectThread.join();
 
       TRC_WARNING(PAR(this) << PAR(m_mqttClientId) << " Disconnect: => Message queue will be stopped ");
-      m_messageQueue->stopQueue();
+      //m_messageQueue->stopQueue();
 
       // init disconnect options
       MQTTAsync_disconnectOptions disc_opts = MQTTAsync_disconnectOptions_initializer;
@@ -518,8 +525,9 @@ namespace shape {
     {
       publish(topic, qos, std::vector<uint8_t>(msg.data(), msg.data() + msg.size()));
     }
-    
-    void publish(const std::string& topic, int qos, const std::vector<uint8_t> & msg
+ 
+#if 0
+    void publish0(const std::string& topic, int qos, const std::vector<uint8_t> & msg
       , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery)
     {
       TRC_FUNCTION_ENTER(PAR(this));
@@ -539,6 +547,7 @@ namespace shape {
       }
       TRC_FUNCTION_LEAVE(PAR(this));
     }
+#endif  
 
     void publish(const std::string& topic, int qos, const std::string & msg
       , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery)
@@ -651,20 +660,13 @@ namespace shape {
         PAR(sessionPresent)
       );
 
-      //{
-      //  TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
-      //  std::unique_lock<std::mutex> lck(m_connectionMutex);
-      //  TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
-      //  m_connectionVariable.notify_one();
-      //  TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
-      //}
       m_connectionVariable.notify_all();
 
       if (m_mqttOnConnectHandlerFunc) {
         m_mqttOnConnectHandlerFunc();
       }
 
-      TRC_WARNING(PAR(this) << "\n Message queue => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
+      //TRC_WARNING(PAR(this) << "\n Message queue => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
 
       TRC_FUNCTION_LEAVE(PAR(this));
     }
@@ -856,6 +858,77 @@ namespace shape {
     // send (publish) functions
     ///////////////////////
 
+    void publish(const std::string& topic, int qos, const std::vector<uint8_t> & msg
+      , MqttOnSendHandlerFunc onSend, MqttOnDeliveryHandlerFunc onDelivery)
+    {
+      TRC_FUNCTION_ENTER("Sending to MQTT: " << PAR(topic) << PAR(qos) << std::endl <<
+        MEM_HEX_CHAR(msg.data(), (msg.size() > 256 ? 256 : msg.size())));
+
+      TRC_INFORMATION(PAR(this) << PAR(topic) << PAR(qos));
+
+      if (nullptr == m_client) {
+        THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)" << PAR(topic));
+      }
+
+      bool bretval = false;
+      int retval;
+      MQTTAsync_message pubmsg = MQTTAsync_message_initializer;
+
+      pubmsg.payload = (void*)msg.data();
+      pubmsg.payloadlen = (int)msg.size();
+      pubmsg.qos = qos;
+      pubmsg.retained = 0;
+
+      TRC_DEBUG(PAR(this) << "LCK-hndlMutex");
+      std::lock_guard<std::mutex> lck(m_connectionMutex); //protects handlers maps
+      TRC_DEBUG(PAR(this) << "AQR-hndlMutex");
+
+      MQTTAsync_responseOptions send_opts = MQTTAsync_responseOptions_initializer;
+      // init send options
+      send_opts.onSuccess = s_onSend;
+      send_opts.onFailure = s_onSendFailure;
+      send_opts.context = this;
+      send_opts.token = -1;
+
+      if ((retval = MQTTAsync_sendMessage(m_client, topic.c_str(), &pubmsg, &send_opts)) == MQTTASYNC_SUCCESS) {
+        bretval = true;
+
+        PublishContext pc(topic, qos, msg, onSend, onDelivery);
+
+        if (m_publishContextMap.size() > m_bufferSize) {
+          TRC_WARNING(PAR(this) << "gets limits: " << NAME_PAR(token, send_opts.token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
+            << NAME_PAR(publishContextMap.size, m_publishContextMap.size()));
+        }
+        else {
+          TRC_DEBUG(PAR(this) << NAME_PAR(token, send_opts.token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
+            << NAME_PAR(publishContextMap.size, m_publishContextMap.size()));
+          m_publishContextMap[send_opts.token] = pc;
+        }
+      }
+      else {
+        TRC_WARNING(PAR(this) << " Failed to start sendMessage: " << PAR(retval));
+        if (!m_buffered) {
+          bretval = true; // => pop anyway from queue
+        }
+      }
+
+      TRC_DEBUG(PAR(this) << "ULCK-hndlMutex");
+      TRC_FUNCTION_LEAVE(PAR(this));
+      //return bretval;
+      return;
+
+      //int retval = m_messageQueue->pushToQueue(PublishContext(topic, qos, msg, onSend, onDelivery));
+      //if (retval > m_bufferSize && m_buffered) {
+      //  auto task = m_messageQueue->pop();
+      //  TRC_WARNING(PAR(this) << " Buffer overload => remove the oldest msg: " << std::endl <<
+      //    NAME_PAR(topic, task.getTopic()) << std::endl <<
+      //    std::string((char*)task.getMsg().data(), task.getMsg().size()));
+      //}
+
+      TRC_FUNCTION_LEAVE(PAR(this));
+    }
+
+#if 0
     // process function of message queue
     bool publishFromQueue(const PublishContext & pc)
     {
@@ -900,6 +973,7 @@ namespace shape {
       TRC_FUNCTION_LEAVE(PAR(this));
       return bretval;
     }
+#endif
 
     //------------------------
     // send success
@@ -1138,9 +1212,9 @@ namespace shape {
 
       modify(props);
 
-      m_messageQueue = shape_new TaskQueue<PublishContext>([&](PublishContext pc)->bool {
-        return publishFromQueue(pc);
-      });
+      //m_messageQueue = shape_new TaskQueue<PublishContext>([&](PublishContext pc)->bool {
+      //  return publishFromQueue(pc);
+      //});
 
       TRC_FUNCTION_LEAVE(PAR(this))
     }
@@ -1159,7 +1233,7 @@ namespace shape {
       MQTTAsync_setCallbacks(m_client, nullptr, nullptr, nullptr, nullptr);
       MQTTAsync_destroy(&m_client);
 
-      delete m_messageQueue;
+      //delete m_messageQueue;
 
       TRC_FUNCTION_LEAVE(PAR(this))
     }
