@@ -892,15 +892,15 @@ namespace shape {
       if ((retval = MQTTAsync_sendMessage(m_client, topic.c_str(), &pubmsg, &send_opts)) == MQTTASYNC_SUCCESS) {
         bretval = true;
 
+        TRC_INFORMATION(PAR(this) << NAME_PAR(token, send_opts.token) << NAME_PAR(publishContextMap.size, m_publishContextMap.size()));
+
         PublishContext pc(topic, qos, msg, onSend, onDelivery);
 
         if (m_publishContextMap.size() > m_bufferSize) {
-          TRC_WARNING(PAR(this) << "gets limits: " << NAME_PAR(token, send_opts.token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
+          TRC_WARNING(PAR(this) << "sendMessage: reached context limit: " << NAME_PAR(token, send_opts.token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
             << NAME_PAR(publishContextMap.size, m_publishContextMap.size()));
         }
         else {
-          TRC_DEBUG(PAR(this) << NAME_PAR(token, send_opts.token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
-            << NAME_PAR(publishContextMap.size, m_publishContextMap.size()));
           m_publishContextMap[send_opts.token] = pc;
         }
       }
@@ -992,11 +992,10 @@ namespace shape {
         auto found = m_publishContextMap.find(response->token);
         if (found != m_publishContextMap.end()) {
           auto & pc = found->second;
-          TRC_INFORMATION(PAR(this) << NAME_PAR(token, response->token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos()));
+          TRC_INFORMATION(PAR(this) << NAME_PAR(token, response->token) << NAME_PAR(topic, pc.getTopic()) << NAME_PAR(qos, pc.getQos())
+            << NAME_PAR(publishContextMap.size, m_publishContextMap.size()));
           pc.onSend(pc.getQos(), true, response->token);
-          //if (pc.getQos() == 0) {
-            m_publishContextMap.erase(found);
-          //}
+          m_publishContextMap.erase(found);
         }
         else {
           TRC_WARNING(PAR(this) << " Missing publishContext: " << PAR(response->token));
