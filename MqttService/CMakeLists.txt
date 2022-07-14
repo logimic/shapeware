@@ -56,6 +56,8 @@ if(WIN32)
 	install(
 		FILES
 			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/paho-mqtt3as.dll"
+			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/libcrypto-1_1-x64.dll"
+			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/libssl-1_1-x64.dll"
 		CONFIGURATIONS Debug
 		DESTINATION "\${CMAKE_INSTALL_CONFIG_NAME}/${PROJECT_INSTALL_PREFIX}/bin"
 	)
@@ -63,6 +65,8 @@ if(WIN32)
 	install(
 		FILES
 			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/paho-mqtt3as.dll"
+			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/libcrypto-1_1-x64.dll"
+			"$<TARGET_FILE_DIR:${PROJECT_NAME}>/libssl-1_1-x64.dll"
 		CONFIGURATIONS Release
 		DESTINATION "\${CMAKE_INSTALL_CONFIG_NAME}/${PROJECT_INSTALL_PREFIX}/bin"
 	)

@@ -13,7 +13,7 @@ Install vcpkg to e.g: **c:\devel\vcpkg** https://github.com/Microsoft/vcpkg
 
 Install via vcpkg:
 ```
-C:\devel\vcpkg>vcpkg install mqtt-paho:x64-windows
+C:\devel\vcpkg>vcpkg install paho-mqtt:x64-windows
 C:\devel\vcpkg>vcpkg install curl:x64-windows
 C:\devel\vcpkg>vcpkg install cppzmq:x64-windows
 C:\devel\vcpkg>vcpkg install openssl:x64-windows
