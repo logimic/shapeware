@@ -65,7 +65,7 @@ namespace shape {
     int m_mqttConnectTimeout = 5; //waits for accept from broker side
     int m_mqttMinReconnect = 1; //waits to reconnect when connection broken
     int m_mqttMaxReconnect = 64; //waits time *= 2 with every unsuccessful attempt up to this value
-    int m_seconds = m_mqttMinReconnect;
+    //int m_seconds = m_mqttMinReconnect;
     bool m_buffered = false; //Whether to allow messages to be sent when the client library is not connected
     int m_bufferSize = 1024; //The maximum number of messages allowed to be buffered while not connected
 
@@ -177,11 +177,12 @@ namespace shape {
 
     MQTTAsync m_client = nullptr;
 
-    std::thread m_connectThread;
-    bool m_runConnectThread = true;
+    //std::thread m_connectThread;
+    //bool m_runConnectThread = true;
+    std::atomic_bool m_connected;
 
     std::mutex m_connectionMutex;
-    std::condition_variable m_connectionVariable;
+    //std::condition_variable m_connectionVariable;
 
     std::unique_ptr<std::promise<bool>> m_disconnect_promise_uptr;
 
@@ -189,7 +190,9 @@ namespace shape {
     //------------------------
     Imp()
     //  : m_messageQueue(nullptr)
-    {}
+    {
+      m_connected = false;
+    }
 
     //------------------------
     ~Imp()
@@ -229,6 +232,11 @@ namespace shape {
         THROW_EXC_TRC_WAR(std::logic_error, "MQTTClient_create() failed: " << PAR(retval));
       }
 
+      int ret = MQTTAsync_setConnected(m_client, this, s_connected);
+      if (ret != MQTTASYNC_SUCCESS) {
+        THROW_EXC_TRC_WAR(std::logic_error, "MQTTClient_setConnected() failed: " << PAR(retval));
+      }
+
       // init event callbacks
       if ((retval = MQTTAsync_setCallbacks(m_client, this, s_connlost, s_msgarrvd, s_delivered)) != MQTTASYNC_SUCCESS) {
         THROW_EXC_TRC_WAR(std::logic_error, "MQTTClient_setCallbacks() failed: " << PAR(retval));
@@ -256,17 +264,81 @@ namespace shape {
     {
       TRC_FUNCTION_ENTER(PAR(this));
 
+      m_connected = false;
+
       if (nullptr == m_client) {
         THROW_EXC_TRC_WAR(std::logic_error, " Client is not created. Consider calling IMqttService::create(clientId)");
       }
 
-      m_runConnectThread = true;
-      m_connectionVariable.notify_all();
+      //m_runConnectThread = true;
+      //m_connectionVariable.notify_all();
 
-      if (m_connectThread.joinable())
-        m_connectThread.join();
+      //if (m_connectThread.joinable())
+      //  m_connectThread.join();
 
-      m_connectThread = std::thread([this]() { this->connectThread(); });
+      //m_connectThread = std::thread([this]() { this->connectThread(); });
+      //while (m_runConnectThread) {
+      {
+        if (!MQTTAsync_isConnected(m_client)) {
+          // init connection options
+          MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
+          MQTTAsync_SSLOptions ssl_opts = MQTTAsync_SSLOptions_initializer;
+
+          conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
+          conn_opts.cleansession = 1;
+          conn_opts.connectTimeout = m_mqttConnectTimeout;
+          conn_opts.username = m_mqttUser.c_str();
+          conn_opts.password = m_mqttPassword.c_str();
+          conn_opts.onSuccess = s_onConnect;
+          conn_opts.onFailure = s_onConnectFailure;
+          conn_opts.context = this;
+          //conn_opts.automaticReconnect = 0; //1 doesn't work with aws
+
+          // init ssl options if required
+          if (m_mqttEnabledSSL) {
+            ssl_opts.enableServerCertAuth = true;
+            if (!m_trustStore.empty()) ssl_opts.trustStore = m_trustStore.c_str();
+            if (!m_keyStore.empty()) ssl_opts.keyStore = m_keyStore.c_str();
+            if (!m_privateKey.empty()) ssl_opts.privateKey = m_privateKey.c_str();
+            if (!m_privateKeyPassword.empty()) ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
+            if (!m_enabledCipherSuites.empty()) ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
+            ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
+            conn_opts.ssl = &ssl_opts;
+          }
+
+          TRC_DEBUG(PAR(this) << " Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
+            << NAME_PAR(trustStore, (ssl_opts.trustStore ? ssl_opts.trustStore : ""))
+            << NAME_PAR(keyStore, (ssl_opts.keyStore ? ssl_opts.keyStore : ""))
+            << NAME_PAR(privateKey, (ssl_opts.privateKey ? ssl_opts.privateKey : ""))
+            << NAME_PAR(enableServerCertAuth, ssl_opts.enableServerCertAuth)
+          );
+
+          int ret = MQTTAsync_connect(m_client, &conn_opts);
+          if (ret != MQTTASYNC_SUCCESS) {
+            THROW_EXC_TRC_WAR(std::logic_error, "MQTTAsync_connect() failed: " << PAR(ret));
+          }
+
+          //m_seconds = m_seconds < m_mqttMaxReconnect ? m_seconds * 2 : m_mqttMaxReconnect;
+          //TRC_DEBUG(PAR(this) << " Going to sleep for: " << PAR(m_seconds));
+        }
+        else {
+          //m_seconds = m_mqttMaxReconnect;
+        }
+
+        // wait for connection result
+        //{
+        //  TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
+        //  std::unique_lock<std::mutex> lck(m_connectionMutex);
+        //  TRC_DEBUG(PAR(this) << "AQR-wait connectionMutex - waiting cnt: " << ++wait_cnt);
+        //  m_connectionVariable.wait_for(lck, std::chrono::seconds(m_seconds),
+        //    [this] {return !m_runConnectThread; });
+        //  TRC_DEBUG(PAR(this) << "ULCK-connectionMutex: " << "out of waiting cnt: " << ++wait_cnt);
+        //}
+
+      }
+
+
+
       TRC_FUNCTION_LEAVE(PAR(this));
     }
 
@@ -289,12 +361,12 @@ namespace shape {
       std::future<bool> disconnect_future = m_disconnect_promise_uptr->get_future();
 
       ///stop connect thread
-      m_runConnectThread = false;
-      m_connectionVariable.notify_all();
+      //m_runConnectThread = false;
+      //m_connectionVariable.notify_all();
 
       onConnectFailure(nullptr);
-      if (m_connectThread.joinable())
-        m_connectThread.join();
+      //if (m_connectThread.joinable())
+      //  m_connectThread.join();
 
       TRC_WARNING(PAR(this) << PAR(m_mqttClientId) << " Disconnect: => Message queue will be stopped ");
       //m_messageQueue->stopQueue();
@@ -558,77 +630,78 @@ namespace shape {
     // connection functions
     ///////////////////////
 
-    void connectThread()
-    {
-      TRC_FUNCTION_ENTER(PAR(this));
-      //TODO verify paho autoconnect and reuse if applicable - does not work now
-      int retval;
-      static int wait_cnt = 0;
+    //void connectThread()
+    //{
+    //  TRC_FUNCTION_ENTER(PAR(this));
+    //  //TODO verify paho autoconnect and reuse if applicable - does not work now
+    //  int retval;
+    //  static int wait_cnt = 0;
 
-      while (m_runConnectThread) {
-        if (!MQTTAsync_isConnected(m_client)) {
-          // init connection options
-          MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
-          MQTTAsync_SSLOptions ssl_opts = MQTTAsync_SSLOptions_initializer;
+    //  while (m_runConnectThread) {
+    //    if (!MQTTAsync_isConnected(m_client)) {
+    //      // init connection options
+    //      MQTTAsync_connectOptions conn_opts = MQTTAsync_connectOptions_initializer;
+    //      MQTTAsync_SSLOptions ssl_opts = MQTTAsync_SSLOptions_initializer;
 
-          conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
-          conn_opts.cleansession = 1;
-          conn_opts.connectTimeout = m_mqttConnectTimeout;
-          conn_opts.username = m_mqttUser.c_str();
-          conn_opts.password = m_mqttPassword.c_str();
-          conn_opts.onSuccess = s_onConnect;
-          conn_opts.onFailure = s_onConnectFailure;
-          conn_opts.context = this;
-          conn_opts.automaticReconnect = 0; //1 doesn't work with aws
+    //      conn_opts.keepAliveInterval = m_mqttKeepAliveInterval;
+    //      conn_opts.cleansession = 1;
+    //      conn_opts.connectTimeout = m_mqttConnectTimeout;
+    //      conn_opts.username = m_mqttUser.c_str();
+    //      conn_opts.password = m_mqttPassword.c_str();
+    //      conn_opts.onSuccess = s_onConnect;
+    //      conn_opts.onFailure = s_onConnectFailure;
+    //      conn_opts.context = this;
+    //      //conn_opts.automaticReconnect = 0; //1 doesn't work with aws
 
-          // init ssl options if required
-          if (m_mqttEnabledSSL) {
-            ssl_opts.enableServerCertAuth = true;
-            if (!m_trustStore.empty()) ssl_opts.trustStore = m_trustStore.c_str();
-            if (!m_keyStore.empty()) ssl_opts.keyStore = m_keyStore.c_str();
-            if (!m_privateKey.empty()) ssl_opts.privateKey = m_privateKey.c_str();
-            if (!m_privateKeyPassword.empty()) ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
-            if (!m_enabledCipherSuites.empty()) ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
-            ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
-            conn_opts.ssl = &ssl_opts;
-          }
+    //      // init ssl options if required
+    //      if (m_mqttEnabledSSL) {
+    //        ssl_opts.enableServerCertAuth = true;
+    //        if (!m_trustStore.empty()) ssl_opts.trustStore = m_trustStore.c_str();
+    //        if (!m_keyStore.empty()) ssl_opts.keyStore = m_keyStore.c_str();
+    //        if (!m_privateKey.empty()) ssl_opts.privateKey = m_privateKey.c_str();
+    //        if (!m_privateKeyPassword.empty()) ssl_opts.privateKeyPassword = m_privateKeyPassword.c_str();
+    //        if (!m_enabledCipherSuites.empty()) ssl_opts.enabledCipherSuites = m_enabledCipherSuites.c_str();
+    //        ssl_opts.enableServerCertAuth = m_enableServerCertAuth;
+    //        conn_opts.ssl = &ssl_opts;
+    //      }
 
-          TRC_DEBUG(PAR(this) << " Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
-            << NAME_PAR(trustStore, (ssl_opts.trustStore ? ssl_opts.trustStore : ""))
-            << NAME_PAR(keyStore, (ssl_opts.keyStore ? ssl_opts.keyStore : ""))
-            << NAME_PAR(privateKey, (ssl_opts.privateKey ? ssl_opts.privateKey : ""))
-            << NAME_PAR(enableServerCertAuth, ssl_opts.enableServerCertAuth)
-          );
+    //      TRC_DEBUG(PAR(this) << " Connecting: " << PAR(m_mqttClientId) << PAR(m_mqttBrokerAddr)
+    //        << NAME_PAR(trustStore, (ssl_opts.trustStore ? ssl_opts.trustStore : ""))
+    //        << NAME_PAR(keyStore, (ssl_opts.keyStore ? ssl_opts.keyStore : ""))
+    //        << NAME_PAR(privateKey, (ssl_opts.privateKey ? ssl_opts.privateKey : ""))
+    //        << NAME_PAR(enableServerCertAuth, ssl_opts.enableServerCertAuth)
+    //      );
 
-          if ((retval = MQTTAsync_connect(m_client, &conn_opts)) == MQTTASYNC_SUCCESS) {
-          }
-          else {
-            TRC_WARNING(PAR(this) << " MQTTAsync_connect() failed: " << PAR(retval));
-          }
+    //      if ((retval = MQTTAsync_connect(m_client, &conn_opts)) == MQTTASYNC_SUCCESS) {
+    //      }
+    //      else {
+    //        TRC_WARNING(PAR(this) << " MQTTAsync_connect() failed: " << PAR(retval));
+    //      }
 
-          m_seconds = m_seconds < m_mqttMaxReconnect ? m_seconds * 2 : m_mqttMaxReconnect;
-          TRC_DEBUG(PAR(this) << " Going to sleep for: " << PAR(m_seconds));
-        }
-        else {
-          m_seconds = m_mqttMaxReconnect;
-        }
+    //      m_seconds = m_seconds < m_mqttMaxReconnect ? m_seconds * 2 : m_mqttMaxReconnect;
+    //      TRC_DEBUG(PAR(this) << " Going to sleep for: " << PAR(m_seconds));
+    //    }
+    //    else {
+    //      m_seconds = m_mqttMaxReconnect;
+    //    }
 
-        // wait for connection result
-        {
-          TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
-          std::unique_lock<std::mutex> lck(m_connectionMutex);
-          TRC_DEBUG(PAR(this) << "AQR-wait connectionMutex - waiting cnt: " << ++wait_cnt);
-          m_connectionVariable.wait_for(lck, std::chrono::seconds(m_seconds),
-            [this] {return !m_runConnectThread; });
-          TRC_DEBUG(PAR(this) << "ULCK-connectionMutex: " << "out of waiting cnt: " << ++wait_cnt);
-        }
+    //    // wait for connection result
+    //    {
+    //      TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
+    //      std::unique_lock<std::mutex> lck(m_connectionMutex);
+    //      TRC_DEBUG(PAR(this) << "AQR-wait connectionMutex - waiting cnt: " << ++wait_cnt);
+    //      m_connectionVariable.wait_for(lck, std::chrono::seconds(m_seconds),
+    //        [this] {return !m_runConnectThread; });
+    //      TRC_DEBUG(PAR(this) << "ULCK-connectionMutex: " << "out of waiting cnt: " << ++wait_cnt);
+    //    }
 
-      }
-      TRC_FUNCTION_LEAVE(PAR(this));
-    }
+    //  }
+    //  TRC_FUNCTION_LEAVE(PAR(this));
+    //}
 
     //----------------------------
     // connection succes callback
+    //------------------------ CALLED ONLY ONCE
     static void s_onConnect(void* context, MQTTAsync_successData* response)
     {
       ((MqttService::Imp*)context)->onConnect(response);
@@ -659,11 +732,13 @@ namespace shape {
         PAR(sessionPresent)
       );
 
-      m_connectionVariable.notify_all();
+      m_connected = true;
 
-      if (m_mqttOnConnectHandlerFunc) {
-        m_mqttOnConnectHandlerFunc();
-      }
+      //m_connectionVariable.notify_all();
+
+      //if (m_mqttOnConnectHandlerFunc) {
+      //  m_mqttOnConnectHandlerFunc();
+      //}
 
       //TRC_WARNING(PAR(this) << "\n Message queue => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
 
@@ -672,6 +747,7 @@ namespace shape {
 
     //----------------------------
     // connection failure callback
+    //------------------------ CALLED ONLY ONCE
     static void s_onConnectFailure(void* context, MQTTAsync_failureData* response)
     {
       ((MqttService::Imp*)context)->onConnectFailure(response);
@@ -685,14 +761,49 @@ namespace shape {
       else {
         TRC_WARNING(PAR(this) << " Connect failed: " << PAR(m_mqttClientId) << " missing more info");
       }
-      {
-        TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
-        std::unique_lock<std::mutex> lck(m_connectionMutex);
-        TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
-        m_connectionVariable.notify_all();
-        TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
-      }
+      //{
+      //  TRC_DEBUG(PAR(this) << "LCK-connectionMutex");
+      //  std::unique_lock<std::mutex> lck(m_connectionMutex);
+      //  TRC_DEBUG(PAR(this) << "AQR-connectionMutex");
+      //  //m_connectionVariable.notify_all();
+      //  TRC_DEBUG(PAR(this) << "ULCK-connectionMutex");
+      //}
+
+      m_connected = false;
+
       TRC_FUNCTION_LEAVE(PAR(this));
+    }
+
+    //------------------------
+    //------------------------ CALLED ON EVERY CONNECT SUCCESS
+    static void s_connected(void* context, char* cause) {
+      ((MqttService::Imp*)context)->connected(cause);
+    }
+    void connected(char* cause) {
+      (void)cause;
+      //TRC_INFORMATION(CONNECTION(m_mqttBrokerAddr, m_mqttClientId) << "(Re-)connect success.");
+      TRC_INFORMATION(PAR(m_mqttClientId) << "(Re-)connect success.");
+
+      m_connected = true;
+
+      if (m_mqttOnConnectHandlerFunc) {
+        m_mqttOnConnectHandlerFunc();
+      }
+
+      //TRC_DEBUG(
+      //  CONNECTION(m_mqttBrokerAddr, m_mqttClientId) <<
+      //  "Subscribing: " << PAR(m_mqttTopicRequest) << PAR(m_mqttQos)
+      //);
+      //int ret = MQTTAsync_subscribe(m_client, m_mqttTopicRequest.c_str(), m_mqttQos, &m_subs_opts);
+      //if (ret != MQTTASYNC_SUCCESS) {
+      //  TRC_WARNING(
+      //    CONNECTION(m_mqttBrokerAddr, m_mqttClientId) <<
+      //    "MQTTAsync_subscribe() failed: " <<
+      //    PAR(ret) <<
+      //    PAR(m_mqttTopicRequest) <<
+      //    PAR(m_mqttQos)
+      //  );
+      //}
     }
 
     ///////////////////////
@@ -888,6 +999,10 @@ namespace shape {
       send_opts.onFailure = s_onSendFailure;
       send_opts.context = this;
       send_opts.token = -1;
+
+      //TODO
+      if (m_connected) {
+      }
 
       if ((retval = MQTTAsync_sendMessage(m_client, topic.c_str(), &pubmsg, &send_opts)) == MQTTASYNC_SUCCESS) {
         bretval = true;
@@ -1189,9 +1304,12 @@ namespace shape {
     }
     void connlost(char *cause) {
       TRC_FUNCTION_ENTER(PAR(this));
-      TRC_WARNING(PAR(this) << " Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")) << " wait for automatic reconnect");
-      m_seconds = m_mqttMinReconnect;
-      m_connectionVariable.notify_all();
+
+      m_connected = false;
+
+      //TRC_WARNING(PAR(this) << " Connection lost: " << NAME_PAR(cause, (cause ? cause : "nullptr")) << " wait for automatic reconnect");
+      //m_seconds = m_mqttMinReconnect;
+      //m_connectionVariable.notify_all();
       TRC_FUNCTION_LEAVE(PAR(this));
     }
 
