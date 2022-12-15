@@ -160,6 +160,7 @@ namespace shape {
     MqttMessageHandlerFunc m_mqttMessageHandlerFunc;
     MqttMessageStrHandlerFunc m_mqttMessageStrHandlerFunc;
     MqttOnConnectHandlerFunc m_mqttOnConnectHandlerFunc;
+    MqttOnConnectFailureHandlerFunc m_mqttOnConnectFailureHandlerFunc;
     MqttOnSubscribeHandlerFunc m_mqttOnSubscribeHandlerFunc;
     MqttOnDisconnectHandlerFunc m_mqttOnDisconnectHandlerFunc;
 
@@ -326,6 +327,13 @@ namespace shape {
       connect();
     }
 
+    void connect(MqttOnConnectHandlerFunc onConnect, MqttOnConnectFailureHandlerFunc onConnectFailure)
+    {
+      m_mqttOnConnectHandlerFunc = onConnect;
+      m_mqttOnConnectFailureHandlerFunc = onConnectFailure;
+      connect();
+    }
+
     //------------------------
     void disconnect()
     {
@@ -338,7 +346,7 @@ namespace shape {
       m_disconnect_promise_uptr.reset(shape_new std::promise<bool>());
       std::future<bool> disconnect_future = m_disconnect_promise_uptr->get_future();
 
-      onConnectFailure(nullptr);
+      //onConnectFailure(nullptr);
 
       TRC_WARNING(PAR(this) << PAR(m_mqttClientId) << " Disconnect: => Message queue will be stopped ");
       //m_messageQueue->stopQueue();
@@ -658,6 +666,11 @@ namespace shape {
       }
 
       m_connected = false;
+      if (response) {
+        if (m_mqttOnConnectFailureHandlerFunc) {
+          m_mqttOnConnectFailureHandlerFunc(response->code, response->message ? response->message : "unknown");
+        }
+      }
 
       //TRC_WARNING(PAR(this) << "\n Message queue => going to send buffered msgs number: " << NAME_PAR(bufferSize, m_messageQueue->size()));
 
@@ -1349,6 +1362,11 @@ namespace shape {
   void MqttService::connect(MqttOnConnectHandlerFunc onConnect)
   {
     m_impl->connect(onConnect);
+  }
+
+  void MqttService::connect(MqttOnConnectHandlerFunc onConnect, MqttOnConnectFailureHandlerFunc onConnectFailure)
+  {
+    m_impl->connect(onConnect, onConnectFailure);
   }
 
   void MqttService::disconnect()

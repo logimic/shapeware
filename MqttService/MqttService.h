@@ -34,6 +34,7 @@ namespace shape {
 
     void connect() override;
     void connect(MqttOnConnectHandlerFunc onConnect) override;
+    void connect(MqttOnConnectHandlerFunc onConnect, MqttOnConnectFailureHandlerFunc onConnectFailure) override;
 
     void disconnect() override;
     void disconnect(MqttOnDisconnectHandlerFunc onDisconnect) override;

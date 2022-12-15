@@ -11,6 +11,7 @@ namespace shape {
     typedef std::function<void(const std::string& topic, const std::vector<uint8_t> & msg)> MqttMessageHandlerFunc;
     typedef std::function<void(const std::string& topic, const std::string & msg)> MqttMessageStrHandlerFunc;
     typedef std::function<void()> MqttOnConnectHandlerFunc;
+    typedef std::function<void(int code, std::string reason)> MqttOnConnectFailureHandlerFunc;
     typedef std::function<void(const std::string& topic, bool result)> MqttOnSubscribeHandlerFunc;
     typedef std::function<void(const std::string& topic, int qos, bool result)> MqttOnSubscribeQosHandlerFunc;
     typedef std::function<void(const std::string& topic, bool result)> MqttOnUnsubscribeHandlerFunc;
@@ -37,6 +38,7 @@ namespace shape {
 
     virtual void connect() = 0;
     virtual void connect(MqttOnConnectHandlerFunc onConnect) = 0;
+    virtual void connect(MqttOnConnectHandlerFunc onConnect, MqttOnConnectFailureHandlerFunc onConnectFailure) = 0;
 
     virtual void disconnect() = 0;
     virtual void disconnect(MqttOnDisconnectHandlerFunc onDisconnect) = 0;
