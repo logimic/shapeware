@@ -221,6 +221,9 @@ namespace shape {
       if (!cp.trustStore.empty()) m_trustStore = cp.trustStore;
       if (!cp.certificate.empty()) m_keyStore = cp.certificate;
       if (!cp.privateKey.empty()) m_privateKey = cp.privateKey;
+      if (!cp.user.empty()) m_mqttUser = cp.user;
+      if (!cp.password.empty()) m_mqttPassword = cp.password;
+      m_mqttEnabledSSL = cp.enabledSSL;
 
       m_mqttClientId = clientId;
 
