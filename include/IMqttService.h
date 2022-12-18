@@ -24,13 +24,16 @@ namespace shape {
     class ConnectionPars
     {
     public:
+      ConnectionPars()
+        :enabledSSL(true)
+      {}
       std::string brokerAddress;
       std::string trustStore;
       std::string certificate;
       std::string privateKey;
       std::string user;
       std::string password;
-      bool enabledSSL = true;
+      bool enabledSSL;
     };
 
     virtual void create(const std::string& clientId, const ConnectionPars& cp = ConnectionPars()) = 0;
