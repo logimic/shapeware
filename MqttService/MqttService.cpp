@@ -285,7 +285,7 @@ namespace shape {
         conn_opts.onSuccess = s_onConnect;
         conn_opts.onFailure = s_onConnectFailure;
         conn_opts.context = this;
-        //conn_opts.automaticReconnect = 0; //1 doesn't work with aws
+        conn_opts.automaticReconnect = 1;
 
         // init ssl options if required
         if (m_mqttEnabledSSL) {
