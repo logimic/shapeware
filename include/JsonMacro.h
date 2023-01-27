@@ -67,3 +67,59 @@
   value = pv; \
 }
 
+//////////////////////////////////////////
+#define GET_OPT_JSON_AS_NUM(jsonVal, pointerPath, value) \
+{ \
+  const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
+  if (pv && pv->IsNumber()) { \
+    value = pv->GetDouble(); \
+  } \
+}
+
+#define GET_OPT_JSON_AS_INT(jsonVal, pointerPath, value) \
+{ \
+  const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
+  if (pv && pv->IsNumber()) { \
+    value = static_cast<int>(pv->GetDouble()); \
+  } \
+}
+
+#define GET_OPT_JSON_AS_UINT(jsonVal, pointerPath, value) \
+{ \
+  const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
+  if (pv && pv->IsUint()) { \
+    value = pv->GetUint(); \
+  } \
+}
+
+#define GET_OPT_JSON_AS_BOOL(jsonVal, pointerPath, value) \
+{ \
+  const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
+  if (pv && pv->IsBool()) { \
+    value = pv->GetBool(); \
+  } \
+}
+
+#define GET_OPT_JSON_AS_STR(jsonVal, pointerPath, value) \
+{ \
+  const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
+  if (pv && pv->IsString()) { \
+    value = pv->GetString(); \
+  } \
+}
+
+#define GET_OPT_JSON_AS_OBJECT(jsonVal, pointerPath, value) \
+{ \
+  const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
+  if (pv && pv->IsObject()) { \
+    value = pv; \
+  } \
+}
+
+#define GET_OPT_JSON_AS_ARRAY(jsonVal, pointerPath, value) \
+{ \
+  const rapidjson::Value *pv = rapidjson::Pointer(pointerPath).Get(jsonVal); \
+  if (pv && pv->IsArray()) { \
+    value = pv; \
+  } \
+}
