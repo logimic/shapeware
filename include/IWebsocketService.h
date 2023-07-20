@@ -17,6 +17,7 @@
 #pragma once
 
 #include "ShapeDefines.h"
+#include <cstdint>
 #include <vector>
 #include <string>
 #include <functional>
