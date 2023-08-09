@@ -33,11 +33,11 @@
 #include <direct.h>
 #endif
 
-#include "oegw__AwsFleetProv.hxx"
+#include "shape__AwsFleetProv.hxx"
 
-TRC_INIT_MODULE(oegw::AwsFleetProv);
+TRC_INIT_MODULE(shape::AwsFleetProv);
 
-namespace oegw {
+namespace shape {
 
   //cross platform mkdir class
   class Mkdir
@@ -119,7 +119,7 @@ namespace oegw {
   class AwsFleetProv::Imp
   {
   private:
-    oegw::IIdentityProvider* m_iIdentityProvider = nullptr;
+    shape::IIdentityProvider* m_iIdentityProvider = nullptr;
     shape::IMqttService* m_iMqttService = nullptr;
     shape::ILaunchService* m_iLaunchService = nullptr;
 
@@ -896,12 +896,12 @@ namespace oegw {
 
     }
 
-    void attachInterface(oegw::IIdentityProvider* iface)
+    void attachInterface(shape::IIdentityProvider* iface)
     {
       m_iIdentityProvider = iface;
     }
 
-    void detachInterface(oegw::IIdentityProvider* iface)
+    void detachInterface(shape::IIdentityProvider* iface)
     {
       if (m_iIdentityProvider == iface) {
         m_iIdentityProvider = nullptr;
@@ -974,12 +974,12 @@ namespace oegw {
   {
   }
 
-  void AwsFleetProv::attachInterface(oegw::IIdentityProvider* iface)
+  void AwsFleetProv::attachInterface(shape::IIdentityProvider* iface)
   {
     m_imp->attachInterface(iface);
   }
 
-  void AwsFleetProv::detachInterface(oegw::IIdentityProvider* iface)
+  void AwsFleetProv::detachInterface(shape::IIdentityProvider* iface)
   {
     m_imp->detachInterface(iface);
   }

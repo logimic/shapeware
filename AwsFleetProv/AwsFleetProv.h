@@ -9,7 +9,7 @@
 #include <string>
 #include <thread>
 
-namespace oegw {
+namespace shape {
   class AwsFleetProv: public IMqttConnectionParsProvider
   {
   public:
@@ -25,8 +25,8 @@ namespace oegw {
     void deactivate();
     void modify(const shape::Properties *props);
 
-    void attachInterface(oegw::IIdentityProvider* iface);
-    void detachInterface(oegw::IIdentityProvider* iface);
+    void attachInterface(shape::IIdentityProvider* iface);
+    void detachInterface(shape::IIdentityProvider* iface);
 
     void attachInterface(shape::IMqttService* iface);
     void detachInterface(shape::IMqttService* iface);

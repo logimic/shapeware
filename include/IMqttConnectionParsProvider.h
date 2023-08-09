@@ -2,7 +2,7 @@
 
 #include "IMqttService.h" 
 
-namespace oegw {
+namespace shape {
   ////////////////
   class IMqttConnectionParsProvider
   {

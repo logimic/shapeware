@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace oegw {
+namespace shape {
   ////////////////
   class IIdentityProvider
   {

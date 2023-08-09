@@ -1,10 +1,10 @@
 project(AwsFleetProv)
 
-FIND_PACKAGE(shapeware REQUIRED)
+#FIND_PACKAGE(shapeware REQUIRED)
 
-set(COMPONENT oegw::AwsFleetProv)
+set(COMPONENT shape::AwsFleetProv)
 DeclareShapeComponent(${COMPONENT})
-AddShapeProvidedInterface(${COMPONENT} oegw::IMqttConnectionParsProvider)
+AddShapeProvidedInterface(${COMPONENT} shape::IMqttConnectionParsProvider)
 AddShapeRequiredInterface(${COMPONENT} oegw::IIdentityProvider MANDATORY SINGLE)
 AddShapeRequiredInterface(${COMPONENT} shape::IMqttService MANDATORY SINGLE)
 AddShapeRequiredInterface(${COMPONENT} shape::ILaunchService MANDATORY SINGLE)
