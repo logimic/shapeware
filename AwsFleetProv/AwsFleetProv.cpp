@@ -132,6 +132,7 @@ namespace shape {
     mutable std::mutex m_provisioningDataMtx;
     IMqttConnectionParsProvider::ProvisioningData m_provisioningData;
     MqttProvisioningHandlerFunc m_onProvisioned;
+    MqttProvisioningHandlerErrorFunc m_onError;
 
     std::string m_instanceName;
     std::string m_mqttClientId;
@@ -211,8 +212,9 @@ namespace shape {
         //wait for connection
         auto status = m_workCond.wait_for(lck, std::chrono::seconds(60), [&]()->bool {return connected; });
 
-        if (connected && makeProvisioning()) {
-          std::lock_guard<std::mutex> lck(m_provisioningDataMtx);
+        if (connected) {
+          makeProvisioning();
+          std::lock_guard<std::mutex> lckdata(m_provisioningDataMtx);
 
           // success
           m_provisioningData.m_isProvisioned = true;
@@ -221,14 +223,14 @@ namespace shape {
           m_provisioningData.m_connectionPars.certificate = m_officialCertificatePemFileName;
           m_provisioningData.m_connectionPars.privateKey = m_officialPrivatePemFileName;
 
-          m_onProvisioned(m_provisioningData, true);
+          if (m_onProvisioned) m_onProvisioned(m_provisioningData);
         }
         else {
-          std::lock_guard<std::mutex> lck(m_provisioningDataMtx);
+          std::lock_guard<std::mutex> lckdata(m_provisioningDataMtx);
 
           // failure
           m_provisioningData.m_isProvisioned = false;
-          m_onProvisioned(m_provisioningData, false);
+          if (m_onError) m_onError("Cannot connect to provisioning");
         }
 
         m_iMqttService->disconnect();
@@ -238,7 +240,7 @@ namespace shape {
       catch (std::exception &e)
       {
         TRC_ERROR("Unexpected error " << e.what());
-        std::cout << "Unexpected error " << e.what();
+        if (m_onError) m_onError(e.what());
       }
       catch (...)
       {
@@ -249,7 +251,7 @@ namespace shape {
       TRC_FUNCTION_LEAVE("");
     }
 
-    bool makeProvisioning()
+    void makeProvisioning()
     {
       TRC_FUNCTION_ENTER("");
 
@@ -261,7 +263,7 @@ namespace shape {
 
       bool retval = false;
 
-      try {
+      //try {
         std::promise<bool> keysAcceptedSubscribedPromise;
         std::promise<bool> keysRejectedSubscribedPromise;
         std::promise<bool> keysPublishSendPromise;
@@ -673,16 +675,16 @@ namespace shape {
           THROW_EXC_TRC_WAR(std::logic_error, "Cannot register: " << PAR(registerPublishRespondedResult));
         }
 
-        retval = true;
-      }
-      catch (std::exception &e)
-      {
-        CATCH_EXC_TRC_WAR(std::exception, e, "AWS fleet provisioning error: " << e.what());
-        retval = false;
-      }
+        //retval = true;
+      //}
+      //catch (std::exception &e)
+      //{
+      //  CATCH_EXC_TRC_WAR(std::exception, e, "AWS fleet provisioning error: " << e.what());
+      //  retval = false;
+      //}
 
-      TRC_FUNCTION_LEAVE(PAR(retval));
-      return retval;
+      //TRC_FUNCTION_LEAVE(PAR(retval));
+      //return retval;
     }
 
     void exploreProvisionFile()
@@ -739,13 +741,14 @@ namespace shape {
       TRC_FUNCTION_LEAVE("")
     };
 
-    void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned)
+    void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError)
     {
       TRC_FUNCTION_ENTER("");
 
       TRC_INFORMATION("launched pProvisioning");
 
       m_onProvisioned = onProvisioned;
+      m_onError = onError;
 
       // stop worker if already running
       if (m_runThreadFlag) {
@@ -764,6 +767,11 @@ namespace shape {
       }
 
       TRC_FUNCTION_LEAVE("");
+    }
+
+    void unregisterProvisioningHandlers() {
+      m_onError = nullptr;
+      m_onProvisioned = nullptr;
     }
 
     IMqttConnectionParsProvider::ProvisioningData getProvisioningData() const
@@ -945,9 +953,14 @@ namespace shape {
     delete m_imp;
   }
 
-  void AwsFleetProv::launchProvisioning(MqttProvisioningHandlerFunc onProvisioned)
+  void AwsFleetProv::launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError)
   {
-    m_imp->launchProvisioning(onProvisioned);
+    m_imp->launchProvisioning(onProvisioned, onError);
+  }
+
+  void AwsFleetProv::unregisterProvisioningHandlers()
+  {
+    m_imp->unregisterProvisioningHandlers();
   }
 
   IMqttConnectionParsProvider::ProvisioningData AwsFleetProv::getProvisioningData() const

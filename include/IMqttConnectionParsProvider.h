@@ -15,9 +15,11 @@ namespace shape {
       bool m_isProvisioned;
     };
 
-    typedef std::function<void(ProvisioningData provisioningData, bool result)> MqttProvisioningHandlerFunc;
+    typedef std::function<void(ProvisioningData provisioningData)> MqttProvisioningHandlerFunc;
+    typedef std::function<void(std::string error)> MqttProvisioningHandlerErrorFunc;
 
-    virtual void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned) = 0;
+    virtual void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError) = 0;
+    virtual void unregisterProvisioningHandlers() = 0;
     virtual ProvisioningData getProvisioningData() const = 0;
 
     //topic prefix assembled from identity and provisioningKey
