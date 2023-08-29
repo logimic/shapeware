@@ -261,9 +261,18 @@ namespace shape {
       //TODO
       // wait on promise for limited time to allow thread cancel
 
-      bool retval = false;
+      std::string topic1;
+      std::string topic2;
+      std::string topic3;
+      std::string topic4;
 
-      //try {
+      // on unsubscribed handler
+      auto onUnsubscribed = [&](const std::string& topic, int result)
+      {
+        TRC_INFORMATION("onUnsubscribed: " << PAR(topic) << PAR(result));
+      };
+
+      try {
         std::promise<bool> keysAcceptedSubscribedPromise;
         std::promise<bool> keysRejectedSubscribedPromise;
         std::promise<bool> keysPublishSendPromise;
@@ -369,9 +378,9 @@ namespace shape {
             << "/"
             << "accepted";
 
-          std::string topic = subscribeTopic.str();
-          TRC_INFORMATION("Subscribing to: " << PAR(topic));
-          m_iMqttService->subscribe(topic, 1, onSubscribe, onMessage);
+          topic1 = subscribeTopic.str();
+          TRC_INFORMATION("Subscribing to: " << PAR(topic1));
+          m_iMqttService->subscribe(topic1, 1, onSubscribe, onMessage);
         }
 
         // keys rejected topic subscription
@@ -428,9 +437,9 @@ namespace shape {
             << "/"
             << "rejected";
 
-          std::string topic = subscribeTopic.str();
-          TRC_INFORMATION("Subscribing to: " << PAR(topic));
-          m_iMqttService->subscribe(topic, 1, onSubscribe, onMessage);
+          topic2 = subscribeTopic.str();
+          TRC_INFORMATION("Subscribing to: " << PAR(topic2));
+          m_iMqttService->subscribe(topic2, 1, onSubscribe, onMessage);
         }
 
         // waiting for subscriptions
@@ -534,9 +543,9 @@ namespace shape {
             << "/"
             << "accepted";
 
-          std::string topic = subscribeTopic.str();
-          TRC_INFORMATION("Subscribing to: " << PAR(topic));
-          m_iMqttService->subscribe(topic, 1, onSubscribe, onMessage);
+          topic3 = subscribeTopic.str();
+          TRC_INFORMATION("Subscribing to: " << PAR(topic3));
+          m_iMqttService->subscribe(topic3, 1, onSubscribe, onMessage);
         }
 
         // register thing rejected topic subscription
@@ -593,9 +602,9 @@ namespace shape {
             << "/"
             << "rejected";
 
-          std::string topic = subscribeTopic.str();
-          TRC_INFORMATION("Subscribing to: " << PAR(topic));
-          m_iMqttService->subscribe(topic, 1, onSubscribe, onMessage);
+          topic4 = subscribeTopic.str();
+          TRC_INFORMATION("Subscribing to: " << PAR(topic4));
+          m_iMqttService->subscribe(topic4, 1, onSubscribe, onMessage);
         }
 
         // waiting for subscriptions
@@ -675,13 +684,18 @@ namespace shape {
           THROW_EXC_TRC_WAR(std::logic_error, "Cannot register: " << PAR(registerPublishRespondedResult));
         }
 
-        //retval = true;
-      //}
-      //catch (std::exception &e)
-      //{
-      //  CATCH_EXC_TRC_WAR(std::exception, e, "AWS fleet provisioning error: " << e.what());
-      //  retval = false;
-      //}
+        m_iMqttService->unsubscribe(topic4, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic3, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic2, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic1, onUnsubscribed);
+      }
+      catch (std::exception &e)
+      {
+        m_iMqttService->unsubscribe(topic4, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic3, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic2, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic1, onUnsubscribed);
+      }
 
       //TRC_FUNCTION_LEAVE(PAR(retval));
       //return retval;
@@ -741,7 +755,7 @@ namespace shape {
       TRC_FUNCTION_LEAVE("")
     };
 
-    void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError)
+    void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError, bool inThread)
     {
       TRC_FUNCTION_ENTER("");
 
@@ -750,20 +764,25 @@ namespace shape {
       m_onProvisioned = onProvisioned;
       m_onError = onError;
 
-      // stop worker if already running
-      if (m_runThreadFlag) {
-        m_runThreadFlag = false;
-        //m_workCond.notify_all();
-        if (m_runThread.joinable())
-          m_runThread.join();
-      }
+      if (inThread) {
+        // stop worker if already running
+        if (m_runThreadFlag) {
+          m_runThreadFlag = false;
+          //m_workCond.notify_all();
+          if (m_runThread.joinable())
+            m_runThread.join();
+        }
 
-      // start worker
-      if (!m_runThreadFlag) {
-        m_runThreadFlag = true;
-        m_runThread = std::thread([&]() {
-          worker();
-        });
+        // start worker
+        if (!m_runThreadFlag) {
+          m_runThreadFlag = true;
+          m_runThread = std::thread([&]() {
+            worker();
+            });
+        }
+      }
+      else {
+        worker();
       }
 
       TRC_FUNCTION_LEAVE("");
@@ -953,9 +972,9 @@ namespace shape {
     delete m_imp;
   }
 
-  void AwsFleetProv::launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError)
+  void AwsFleetProv::launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError, bool inThread)
   {
-    m_imp->launchProvisioning(onProvisioned, onError);
+    m_imp->launchProvisioning(onProvisioned, onError, inThread);
   }
 
   void AwsFleetProv::unregisterProvisioningHandlers()

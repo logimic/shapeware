@@ -18,7 +18,7 @@ namespace shape {
     typedef std::function<void(ProvisioningData provisioningData)> MqttProvisioningHandlerFunc;
     typedef std::function<void(std::string error)> MqttProvisioningHandlerErrorFunc;
 
-    virtual void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError) = 0;
+    virtual void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError, bool inThread) = 0;
     virtual void unregisterProvisioningHandlers() = 0;
     virtual ProvisioningData getProvisioningData() const = 0;
 

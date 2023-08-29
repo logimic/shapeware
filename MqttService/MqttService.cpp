@@ -553,8 +553,8 @@ namespace shape {
 
         m_onMessageHndlMap.erase(topic);
 
-        TRC_DEBUG(PAR(this) << PAR(subs_opts.token))
-          m_unsubscribeContextMap[subs_opts.token] = UnsubscribeContext(topic, onUnsubscribe);
+        TRC_DEBUG(PAR(this) << PAR(subs_opts.token));
+        m_unsubscribeContextMap[subs_opts.token] = UnsubscribeContext(topic, onUnsubscribe);
         TRC_DEBUG(PAR(this) << PAR(std::this_thread::get_id()) << "UNLCK: m_subscriptionDataMutex");
       }
 

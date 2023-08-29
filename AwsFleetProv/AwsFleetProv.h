@@ -16,7 +16,7 @@ namespace shape {
     AwsFleetProv();
     virtual ~AwsFleetProv();
 
-    void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError) override;
+    void launchProvisioning(MqttProvisioningHandlerFunc onProvisioned, MqttProvisioningHandlerErrorFunc onError, bool inThread) override;
     void unregisterProvisioningHandlers() override;
     ProvisioningData getProvisioningData() const override;
 
