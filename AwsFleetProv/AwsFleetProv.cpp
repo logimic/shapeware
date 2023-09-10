@@ -142,6 +142,7 @@ namespace shape {
 
     std::string m_token;
     std::string m_thingName;
+    std::string m_certificateId;
 
     std::string m_bootstrapCertificatesFileName;
     std::string m_bootstrapCertificatePemFileName;
@@ -246,6 +247,7 @@ namespace shape {
       {
         TRC_ERROR("Unknown error");
         std::cout << "Unknown error\n";
+        if (m_onError) m_onError("Unknown error\n");
       }
 
       TRC_FUNCTION_LEAVE("");
@@ -311,17 +313,16 @@ namespace shape {
               }
             }
 
-            std::string certId;
             std::string cert;
             std::string key;
 
-            GET_JSON_AS_STR(doc, "/certificateId", certId);
+            GET_JSON_AS_STR(doc, "/certificateId", m_certificateId);
             GET_JSON_AS_STR(doc, "/certificatePem", cert);
             GET_JSON_AS_STR(doc, "/privateKey", key);
             GET_JSON_AS_STR(doc, "/certificateOwnershipToken", m_token);
 
             TRC_INFORMATION("keysAccepted: "
-              << PAR(certId) << std::endl
+              << PAR(m_certificateId) << std::endl
               //<< PAR(cert) << std::endl
               //<< PAR(key) << std::endl
               << PAR(m_token) << std::endl
@@ -609,11 +610,11 @@ namespace shape {
 
         // waiting for subscriptions
         bool registerAcceptedResult = registerAcceptedSubscribePromise.get_future().get();
+        bool registerRejectedResult = registerRejectedSubscribePromise.get_future().get();
+
         if (!registerAcceptedResult) {
           THROW_EXC_TRC_WAR(std::logic_error, "Cannot subscribe: " << PAR(registerAcceptedResult));
         }
-
-        bool registerRejectedResult = registerRejectedSubscribePromise.get_future().get();
         if (!registerRejectedResult) {
           THROW_EXC_TRC_WAR(std::logic_error, "Cannot subscribe: " << PAR(registerRejectedResult));
         }
@@ -645,6 +646,14 @@ namespace shape {
             << "/"
             << "json";
 
+          std::ostringstream thingNameOs;
+          thingNameOs << "iqrfcloud-" <<
+            m_iIdentityProvider->getParams().m_vendor << '-' <<
+            m_iIdentityProvider->getParams().m_product << '-' <<
+            m_iIdentityProvider->getParams().m_serialNumber;
+
+          m_thingName = thingNameOs.str();
+          
           Document registerDoc;
           // set token
           Pointer("/certificateOwnershipToken").Set(registerDoc, m_token);
@@ -654,10 +663,9 @@ namespace shape {
           Pointer("/parameters/SerialNumber").Set(registerDoc, m_iIdentityProvider->getParams().m_serialNumber);
           Pointer("/parameters/GwType").Set(registerDoc, m_iIdentityProvider->getParams().m_gwType);
           Pointer("/parameters/Application").Set(registerDoc, m_iLaunchService->getAppName());
-
-          if (m_iIdentityProvider->getParams().m_devStage == "dev4") {
-            Pointer("/parameters/devStage").Set(registerDoc, m_iIdentityProvider->getParams().m_devStage);
-          }
+          Pointer("/parameters/DevStage").Set(registerDoc, m_iIdentityProvider->getParams().m_devStage);
+          Pointer("/parameters/CertId").Set(registerDoc, m_certificateId);
+          Pointer("/parameters/ThingName").Set(registerDoc, m_thingName);
 
           rapidjson::StringBuffer buffer;
           rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
@@ -691,14 +699,15 @@ namespace shape {
       }
       catch (std::exception &e)
       {
-        m_iMqttService->unsubscribe(topic4, onUnsubscribed);
-        m_iMqttService->unsubscribe(topic3, onUnsubscribed);
-        m_iMqttService->unsubscribe(topic2, onUnsubscribed);
+        CATCH_EXC_TRC_WAR(std::exception, e, "cancel provisioning");
         m_iMqttService->unsubscribe(topic1, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic2, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic3, onUnsubscribed);
+        m_iMqttService->unsubscribe(topic4, onUnsubscribed);
+        throw e;
       }
 
-      //TRC_FUNCTION_LEAVE(PAR(retval));
-      //return retval;
+      TRC_FUNCTION_LEAVE("");
     }
 
     void exploreProvisionFile()
@@ -721,7 +730,7 @@ namespace shape {
           NAME_PAR(eoffset, doc.GetErrorOffset()));
       }
 
-      GET_JSON_AS_STR(doc, "/thingName", m_thingName);
+      //GET_JSON_AS_STR(doc, "/thingName", m_thingName);
 
       if (false) {
       //if (m_iIdentityProvider->getParams().m_devStage == "dev4") { //dev4 topic proposal not supported now, maybe dev5
